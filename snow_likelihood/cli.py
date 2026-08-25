@@ -9,18 +9,24 @@ from typing import List, Optional
 
 from . import data as data_mod
 from . import model as model_mod
+from . import MODEL_NAME, MODEL_FULL_NAME, __version__
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="snow_likelihood",
+        prog="slm",
         description=(
-            "UK snow likelihood model: blends a synoptic rules-based method "
-            "(thickness / freezing level / wet-bulb temperature) with "
-            "multi-model NWP ensemble agreement."
+            f"{MODEL_NAME} ({MODEL_FULL_NAME}) -- a UK snow likelihood model that blends "
+            "a synoptic rules-based method (thickness / freezing level / wet-bulb "
+            "temperature) with multi-model NWP ensemble agreement."
         ),
+    )
+    p.add_argument(
+        "--version",
+        action="version",
+        version=f"{MODEL_NAME} ({MODEL_FULL_NAME}) v{__version__}",
     )
     loc_group = p.add_mutually_exclusive_group(required=False)
     loc_group.add_argument("--location", type=str, help="Free-text UK place name, e.g. 'Aviemore'.")
@@ -178,6 +184,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Error resolving location: {exc}", file=sys.stderr)
         return 1
 
+    print(f"{MODEL_NAME} -- {MODEL_FULL_NAME}")
     print(f"Location: {loc.name}  ({loc.latitude:.3f}, {loc.longitude:.3f}, elevation {loc.elevation_m:.0f} m)")
 
     if args.demo:
