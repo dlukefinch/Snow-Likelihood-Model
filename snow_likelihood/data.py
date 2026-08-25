@@ -35,10 +35,10 @@ ENSEMBLE_URL = "https://ensemble-api.open-meteo.com/v1/ensemble"
 
 DEFAULT_SYNOPTIC_MODEL = "gfs_seamless"
 DEFAULT_ENSEMBLE_MODELS = [
-    "ukmo_global_20km",
+    "ukmo_global_ensemble_20km",
     "icon_seamless_eps",
-    "gfs_ensemble_025",
-    "ecmwf_ifs_025",
+    "ncep_gefs025",
+    "ecmwf_ifs025_ensemble",
 ]
 
 REQUEST_TIMEOUT_S = 20
