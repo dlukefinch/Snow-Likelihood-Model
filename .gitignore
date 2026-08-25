@@ -1,3 +1,5 @@
 .venv/
 __pycache__/
 *.pyc
+tools/output/
+tools/.refresh_state.json
