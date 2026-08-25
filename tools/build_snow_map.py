@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +27,7 @@ sys.path.insert(0, str(REPO_ROOT))
 import rate_limit
 from map_locations import LOCATIONS, SEA_LEVEL_MAX_M, elev_class
 from snow_likelihood import model as model_mod
+from snow_likelihood.mapgeo import build_projection as _shared_build_projection
 
 OUTPUT_PATH = TOOLS_DIR / "output" / "snow_map.html"
 LIVE_CACHE_PATH = TOOLS_DIR / "output" / "live_cache.json"
@@ -46,43 +46,20 @@ def categorise(pct):
 # ---- coastline projection (fixed once the location list is fixed) ----
 
 def build_projection():
-    geo = json.loads((TOOLS_DIR / "gb_coastline.geo.json").read_text())
-    all_lonlat = []
-    polygons = []
-    for feature in geo["features"]:
-        for poly in feature["geometry"]["coordinates"]:
-            rings = []
-            for ring in poly:
-                pts = [(c[0], c[1]) for c in ring]
-                rings.append(pts)
-                all_lonlat.extend(pts)
-            polygons.append(rings)
-    for loc in LOCATIONS:
-        all_lonlat.append((loc["lon"], loc["lat"]))
+    return _shared_build_projection(TOOLS_DIR / "gb_coastline.geo.json", LOCATIONS)
 
-    lons = [p[0] for p in all_lonlat]
-    lats = [p[1] for p in all_lonlat]
-    lat_mean = (min(lats) + max(lats)) / 2
-    cos_lat = math.cos(math.radians(lat_mean))
-    raw_x_min, raw_x_max = min(lons) * cos_lat, max(lons) * cos_lat
-    raw_y_min, raw_y_max = -max(lats), -min(lats)
 
-    pad, w, h = 28, 640, 780
-    scale = min((w - 2 * pad) / (raw_x_max - raw_x_min), (h - 2 * pad) / (raw_y_max - raw_y_min))
+# ---- UK outcode centroids, for offline postcode -> nearest-station lookup ----
+# Source: github.com/Gibbs/uk-postcodes (CC0). No live geocoding call is
+# possible from inside the published page, so this whole table ships with it.
 
-    def project(lon, lat):
-        x = (lon * cos_lat - raw_x_min) * scale + pad
-        y = (-lat - raw_y_min) * scale + pad
-        return round(x, 2), round(y, 2)
-
-    paths = []
-    for rings in polygons:
-        for ring in rings:
-            pts = [project(lon, lat) for lon, lat in ring]
-            paths.append("M " + " L ".join(f"{x},{y}" for x, y in pts) + " Z")
-
-    xy_by_name = {loc["name"]: project(loc["lon"], loc["lat"]) for loc in LOCATIONS}
-    return {"viewbox": [0, 0, w, h], "coastline_paths": paths, "xy": xy_by_name}
+def load_outcodes() -> dict:
+    import csv
+    outcodes = {}
+    with open(TOOLS_DIR / "uk_outcodes.csv", newline="") as f:
+        for row in csv.DictReader(f):
+            outcodes[row["postcode"]] = [round(float(row["latitude"]), 4), round(float(row["longitude"]), 4)]
+    return outcodes
 
 
 # ---- live dataset ----
@@ -102,7 +79,8 @@ def fetch_live(forecast_days: int, xy_by_name: dict) -> dict:
         x, y = xy_by_name[loc["name"]]
         out_locations.append({
             "name": loc["name"], "region": loc["region"], "elev": loc["elev"],
-            "elev_class": elev_class(loc["elev"]), "x": x, "y": y, "days": days,
+            "elev_class": elev_class(loc["elev"]), "x": x, "y": y,
+            "lat": loc["lat"], "lon": loc["lon"], "days": days,
             "peak_pct": best["peak_pct"], "peak_category": best["category"], "peak_date": best["date"],
         })
     return {
@@ -135,7 +113,8 @@ def build_demo(xy_by_name: dict) -> dict:
         x, y = xy_by_name[loc["name"]]
         out_locations.append({
             "name": loc["name"], "region": loc["region"], "elev": loc["elev"],
-            "elev_class": elev_class(loc["elev"]), "x": x, "y": y, "days": days,
+            "elev_class": elev_class(loc["elev"]), "x": x, "y": y,
+            "lat": loc["lat"], "lon": loc["lon"], "days": days,
             "peak_pct": best["peak_pct"], "peak_category": best["category"], "peak_date": best["date"],
         })
     return {"generated": "2026-01-13 (example)", "locations": out_locations}
@@ -153,6 +132,7 @@ HTML_TEMPLATE = r"""<!doctype html>
     --hairline: #dae5ea; --hairline-strong: #c2d3da; --accent: #104281; --accent-ink: #ffffff;
     --land: #dbe7ec; --land-stroke: #aec2cb;
     --cat-1: #86b6ef; --cat-2: #5598e7; --cat-3: #2a78d6; --cat-4: #1c5cab; --cat-5: #104281;
+    --locate-accent: #c9720a;
     --shadow: 0 1px 2px rgba(16,29,40,0.04), 0 8px 24px rgba(16,29,40,0.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -161,6 +141,7 @@ HTML_TEMPLATE = r"""<!doctype html>
       --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
       --land: #16232c; --land-stroke: #263944;
       --cat-1: #9ec5f4; --cat-2: #6da7ec; --cat-3: #3987e5; --cat-4: #256abf; --cat-5: #184f95;
+      --locate-accent: #f0a94e;
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
     }
   }
@@ -169,6 +150,7 @@ HTML_TEMPLATE = r"""<!doctype html>
     --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
     --land: #16232c; --land-stroke: #26394d;
     --cat-1: #9ec5f4; --cat-2: #6da7ec; --cat-3: #3987e5; --cat-4: #256abf; --cat-5: #184f95;
+    --locate-accent: #f0a94e;
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
   }
 
@@ -206,6 +188,42 @@ HTML_TEMPLATE = r"""<!doctype html>
   }
   .toggle button.active { background: var(--accent); color: var(--accent-ink); }
   .toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .locate-card {
+    background: var(--surface); border: 1px solid var(--hairline-strong); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 18px;
+  }
+  .locate-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px;
+  }
+  .locate-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .locate-input {
+    flex: 1 1 200px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px;
+    background: var(--bg); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: 8px;
+    padding: 9px 12px; min-width: 0;
+  }
+  .locate-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .locate-btn {
+    font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
+    padding: 9px 18px; cursor: pointer; flex: none;
+  }
+  .locate-btn:hover { opacity: 0.9; }
+  .locate-error { display: none; color: #c0392b; font-size: 12.5px; margin-top: 9px; }
+  .locate-error.visible { display: block; }
+  .locate-result { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); align-items: center; gap: 12px; flex-wrap: wrap; }
+  .locate-result.visible { display: flex; }
+  .locate-result .r-dist { font-size: 12px; color: var(--ink-muted); }
+  .locate-result .r-station { font-size: 14px; font-weight: 600; }
+  .locate-result .r-pct { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 600; margin-left: auto; }
+
+  @keyframes locate-pulse { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.25; } }
+  .you-ring { fill: none; stroke: var(--locate-accent, #e0982a); stroke-width: 2; animation: locate-pulse 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .you-ring { animation: none; } }
+  .you-mark { fill: var(--locate-accent, #e0982a); stroke: var(--surface); stroke-width: 1.6; }
+  .locate-line { stroke: var(--locate-accent, #e0982a); stroke-width: 1.4; stroke-dasharray: 3 3; opacity: 0.75; }
+  .marker .mark.highlighted { stroke: var(--locate-accent, #e0982a); stroke-width: 3; }
 
   .status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 
@@ -315,6 +333,22 @@ HTML_TEMPLATE = r"""<!doctype html>
     </div>
   </header>
 
+  <div class="locate-card">
+    <div class="locate-label">Find your nearest reference station</div>
+    <div class="locate-row">
+      <input class="locate-input" id="locate-input" type="text" placeholder="Enter a UK postcode, e.g. EH1 or SW1A 1AA" autocomplete="postal-code">
+      <button class="locate-btn" id="locate-btn">Check likelihood</button>
+    </div>
+    <div class="locate-error" id="locate-error"></div>
+    <div class="locate-result" id="locate-result">
+      <div>
+        <div class="r-station" id="r-station"></div>
+        <div class="r-dist" id="r-dist"></div>
+      </div>
+      <div class="r-pct" id="r-pct"></div>
+    </div>
+  </div>
+
   <div class="status-row">
     <div class="refresh-control">
       <button class="refresh-btn" id="refresh-btn">&#8635; Refresh status &middot; <span class="quota">__QUOTA_USED__/__QUOTA_LIMIT__</span> today</button>
@@ -396,6 +430,34 @@ HTML_TEMPLATE = r"""<!doctype html>
 <script>
 const DATA = __DATA_JSON__;
 const COASTLINE = __COASTLINE_JSON__;
+const OUTCODES = __OUTCODES_JSON__;
+const PROJ = __PROJ_PARAMS_JSON__;
+
+function project(lon, lat) {
+  const x = (lon * PROJ.cos_lat - PROJ.raw_x_min) * PROJ.scale + PROJ.pad;
+  const y = (-lat - PROJ.raw_y_min) * PROJ.scale + PROJ.pad;
+  return [x, y];
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function parseOutcode(raw) {
+  const s = raw.trim().toUpperCase().replace(/\s+/g, "");
+  if (!s) return null;
+  // Full postcode: outcode + 3-char incode (digit + 2 letters).
+  if (s.length >= 5 && /^[0-9][A-Z]{2}$/.test(s.slice(-3))) {
+    return s.slice(0, -3);
+  }
+  // Otherwise treat the whole thing as an outcode if it looks like one.
+  if (/^[A-Z]{1,2}[0-9][0-9A-Z]?$/.test(s)) return s;
+  return null;
+}
 
 const CAT_VAR = { "Very low": "--cat-1", "Low": "--cat-2", "Moderate": "--cat-3", "High": "--cat-4", "Very high": "--cat-5" };
 function catColor(cat) { return getComputedStyle(document.documentElement).getPropertyValue(CAT_VAR[cat] || "--cat-1").trim(); }
@@ -425,9 +487,14 @@ function showTooltip(evt, loc) {
 function positionTooltip(evt) { tooltip.style.left = evt.clientX + "px"; tooltip.style.top = (evt.clientY - 14) + "px"; }
 function hideTooltip() { tooltip.classList.remove("visible"); }
 
+let currentDataset = null;
+let markerElsByName = {};
+
 function renderMap(dataset) {
+  currentDataset = dataset;
   const markersG = document.getElementById("markers");
   markersG.innerHTML = "";
+  markerElsByName = {};
   const mountains = dataset.locations.filter(l => l.elev_class === "mountain").sort((a, b) => b.peak_pct - a.peak_pct);
   const sea = dataset.locations.filter(l => l.elev_class === "sea_level").sort((a, b) => b.peak_pct - a.peak_pct);
 
@@ -481,6 +548,7 @@ function renderMap(dataset) {
     g.addEventListener("blur", hideTooltip);
 
     markersG.appendChild(g);
+    markerElsByName[loc.name] = g;
   });
 
   function fillList(elId, locs) {
@@ -520,7 +588,93 @@ function renderMap(dataset) {
 
   document.getElementById("meta-line").innerHTML = "generated <strong>" + dataset.generated + "</strong>";
   document.getElementById("scenario-banner").classList.toggle("visible", dataset === DATA.demo);
+  reapplyLocate();
 }
+
+// ---- postcode -> nearest station ----
+
+let locateState = null; // { outcode, youXY: [x,y] }
+let locateLayer = null;
+
+function ensureLocateLayer() {
+  if (!locateLayer) {
+    locateLayer = document.createElementNS(svgNS, "g");
+    locateLayer.setAttribute("id", "locate-layer");
+    document.getElementById("map").appendChild(locateLayer);
+  }
+  return locateLayer;
+}
+
+function reapplyLocate() {
+  document.querySelectorAll(".mark.highlighted").forEach(el => el.classList.remove("highlighted"));
+  if (!locateState || !currentDataset) return;
+  const loc = currentDataset.locations.find(l => l.name === locateState.stationName);
+  if (!loc) return;
+
+  const g = markerElsByName[loc.name];
+  if (g) {
+    const mark = g.querySelector(".mark");
+    if (mark) mark.classList.add("highlighted");
+  }
+
+  const layer = ensureLocateLayer();
+  layer.innerHTML = "";
+  const [yx, yy] = locateState.youXY;
+  const line = document.createElementNS(svgNS, "line");
+  line.setAttribute("class", "locate-line");
+  line.setAttribute("x1", yx); line.setAttribute("y1", yy);
+  line.setAttribute("x2", loc.x); line.setAttribute("y2", loc.y);
+  layer.appendChild(line);
+
+  const ring = document.createElementNS(svgNS, "circle");
+  ring.setAttribute("class", "you-ring");
+  ring.setAttribute("cx", yx); ring.setAttribute("cy", yy); ring.setAttribute("r", 9);
+  layer.appendChild(ring);
+
+  const mark = document.createElementNS(svgNS, "circle");
+  mark.setAttribute("class", "you-mark");
+  mark.setAttribute("cx", yx); mark.setAttribute("cy", yy); mark.setAttribute("r", 4.5);
+  layer.appendChild(mark);
+
+  document.getElementById("r-station").textContent = loc.name + " (" + loc.region + ")";
+  document.getElementById("r-dist").textContent =
+    locateState.outcode + " → " + locateState.distanceKm.toFixed(1) + "km away · nearest of 12 reference stations · " + loc.peak_date;
+  const pctEl = document.getElementById("r-pct");
+  pctEl.textContent = loc.peak_pct.toFixed(1) + "% · " + loc.peak_category;
+  pctEl.style.color = catColor(loc.peak_category);
+  document.getElementById("locate-result").classList.add("visible");
+}
+
+function runLocate() {
+  const input = document.getElementById("locate-input");
+  const errorEl = document.getElementById("locate-error");
+  errorEl.classList.remove("visible");
+
+  const outcode = parseOutcode(input.value);
+  if (!outcode || !OUTCODES[outcode]) {
+    errorEl.textContent = "Couldn't recognise that postcode — try just the outward part, e.g. \"EH1\" or \"SW1A\".";
+    errorEl.classList.add("visible");
+    document.getElementById("locate-result").classList.remove("visible");
+    locateState = null;
+    reapplyLocate();
+    return;
+  }
+
+  const [lat, lon] = OUTCODES[outcode];
+  let nearest = null, nearestDist = Infinity;
+  currentDataset.locations.forEach(loc => {
+    const d = haversineKm(lat, lon, loc.lat, loc.lon);
+    if (d < nearestDist) { nearestDist = d; nearest = loc; }
+  });
+
+  locateState = { outcode, stationName: nearest.name, distanceKm: nearestDist, youXY: project(lon, lat) };
+  reapplyLocate();
+}
+
+document.getElementById("locate-btn").addEventListener("click", runLocate);
+document.getElementById("locate-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") runLocate();
+});
 
 document.getElementById("btn-live").addEventListener("click", () => {
   document.getElementById("btn-live").classList.add("active");
@@ -543,12 +697,14 @@ renderMap(DATA.live);
 """
 
 
-def render_html(live: dict, demo: dict, projection: dict, quota_used: int, quota_limit: int, last_refresh: str) -> str:
+def render_html(live: dict, demo: dict, projection: dict, outcodes: dict, quota_used: int, quota_limit: int, last_refresh: str) -> str:
     data = {"live": live, "demo": demo}
     html = HTML_TEMPLATE
     html = html.replace("__VBW__", str(projection["viewbox"][2])).replace("__VBH__", str(projection["viewbox"][3]))
     html = html.replace("__DATA_JSON__", json.dumps(data, separators=(",", ":")))
     html = html.replace("__COASTLINE_JSON__", json.dumps(projection["coastline_paths"]))
+    html = html.replace("__OUTCODES_JSON__", json.dumps(outcodes, separators=(",", ":")))
+    html = html.replace("__PROJ_PARAMS_JSON__", json.dumps(projection["proj_params"], separators=(",", ":")))
     html = html.replace("__QUOTA_USED__", str(quota_used)).replace("__QUOTA_LIMIT__", str(quota_limit))
     html = html.replace("__LAST_REFRESH__", last_refresh)
     html = html.replace("__SEA_LEVEL_MAX__", str(SEA_LEVEL_MAX_M))
@@ -565,6 +721,7 @@ def main():
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     projection = build_projection()
     demo = build_demo(projection["xy"])
+    outcodes = load_outcodes()
 
     if args.dry_run:
         if not LIVE_CACHE_PATH.exists():
@@ -585,7 +742,7 @@ def main():
         limit = args.limit
         last_refresh = live["generated"]
 
-    html = render_html(live, demo, projection, used, limit, last_refresh)
+    html = render_html(live, demo, projection, outcodes, used, limit, last_refresh)
     OUTPUT_PATH.write_text(html)
     print(f"Wrote {OUTPUT_PATH} ({used}/{limit} refreshes used in rolling 24h)")
 

@@ -59,7 +59,7 @@ def run_model(
     location_name: str,
     lat: float,
     lon: float,
-    elevation_m: float,
+    elevation_m: Optional[float] = None,
     forecast_days: int = 5,
     synoptic_model: str = data_mod.DEFAULT_SYNOPTIC_MODEL,
     ensemble_models: Optional[List[str]] = None,
@@ -83,6 +83,18 @@ def run_model(
         lambda m: data_mod.fetch_ensemble_one_model(lat, lon, forecast_days, model=m)
     )
 
+    # ---- Synoptic data ----
+    syn_payload = fetch_synoptic_fn()
+    syn_hourly = syn_payload.get("hourly", {})
+    times = syn_hourly.get("time", [])
+    if not times:
+        raise data_mod.SnowDataError("Synoptic forecast response had no hourly time series.")
+
+    if elevation_m is None:
+        # Fall back to the weather model's own grid elevation for this point
+        # -- consistent with the freezing-level figures it also returns.
+        elevation_m = float(syn_payload.get("elevation", 0.0))
+
     run = ModelRun(
         location_name=location_name,
         latitude=lat,
@@ -93,13 +105,6 @@ def run_model(
         ensemble_weight=ensemble_weight,
         synoptic_weight=synoptic_weight,
     )
-
-    # ---- Synoptic data ----
-    syn_payload = fetch_synoptic_fn()
-    syn_hourly = syn_payload.get("hourly", {})
-    times = syn_hourly.get("time", [])
-    if not times:
-        raise data_mod.SnowDataError("Synoptic forecast response had no hourly time series.")
 
     # ---- Ensemble data, one model at a time ----
     ensemble_member_flags_by_time: Dict[str, List[bool]] = {t: [] for t in times}
