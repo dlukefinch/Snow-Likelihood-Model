@@ -415,8 +415,10 @@ const map = new maplibregl.Map({
   style: mapStyleUrl(),
   bounds: UK_BOUNDS,
   fitBoundsOptions: { padding: 20 },
+  attributionControl: false,
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 darkMedia.addEventListener("change", () => map.setStyle(mapStyleUrl()));
 
 let currentDataset = null;
