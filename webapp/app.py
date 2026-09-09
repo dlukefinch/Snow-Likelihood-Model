@@ -73,10 +73,14 @@ def _check_rate_limit(ip: str) -> Optional[float]:
 def _fetch_stations_live(forecast_days: int = 4) -> dict:
     out_locations = []
     for loc in LOCATIONS:
-        run = model_mod.run_model(
-            location_name=loc["name"], lat=loc["lat"], lon=loc["lon"],
-            elevation_m=loc["elev"], forecast_days=forecast_days,
-        )
+        try:
+            run = model_mod.run_model(
+                location_name=loc["name"], lat=loc["lat"], lon=loc["lon"],
+                elevation_m=loc["elev"], forecast_days=forecast_days,
+            )
+        except data_mod.SnowDataError as exc:
+            log.warning("station refresh: skipped %r: %s", loc["name"], exc)
+            continue
         days = [{"date": d.date, "peak_pct": d.peak_score_pct, "category": d.category} for d in run.days]
         best = max(days, key=lambda d: d["peak_pct"]) if days else {"peak_pct": 0.0, "category": "Very low", "date": None}
         out_locations.append({
@@ -85,6 +89,8 @@ def _fetch_stations_live(forecast_days: int = 4) -> dict:
             "lat": loc["lat"], "lon": loc["lon"], "days": days,
             "peak_pct": best["peak_pct"], "peak_category": best["category"], "peak_date": best["date"],
         })
+    if not out_locations:
+        raise data_mod.SnowDataError("Every station in this refresh failed -- check network access.")
     return {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "locations": out_locations}
 
 

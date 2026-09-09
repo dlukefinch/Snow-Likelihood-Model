@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from snow_likelihood.stations import SEA_LEVEL_MAX_M, elev_class
+from snow_likelihood.stations import MAX_ELEV_M, MID_MAX_M, SEA_LEVEL_MAX_M, elev_class
 
 CATEGORY_THRESHOLDS = [(10, "Very low"), (30, "Low"), (55, "Moderate"), (75, "High"), (101, "Very high")]
 
@@ -24,7 +24,14 @@ PEAK_BY_NAME = {
     "Ben Nevis Summit": 96, "Cairn Gorm Summit": 93, "Nevis Range (Aonach Mor)": 89,
     "The Lecht": 79, "Glenshee": 73, "Glencoe Mountain": 68, "Cross Fell": 59,
     "Scafell Pike": 53, "Yr Wyddfa (Snowdon)": 47, "Kinder Scout": 26,
-    "Edinburgh": 16, "London": 3,
+    "Edinburgh": 16, "London": 3, "Cardiff": 4, "Belfast": 9,
+    "Aviemore": 34, "Alston": 38, "Buxton": 41,
+    "Newcastle upon Tyne": 12, "Bristol": 3, "Southampton": 2,
+    "Aberdeen": 18, "Norwich": 4, "Nottingham": 6,
+    "Brighton": 5, "St Ives": 3, "Margate": 6, "Corby": 11,
+    "Whitby": 9, "Alnwick": 13,
+    "Tomintoul": 42, "Malham": 24, "Princetown": 33, "Storey Arms": 36, "Glenshane Pass": 44,
+    "Pen y Fan": 62, "Slieve Donard": 58, "High Willhays": 45, "Helvellyn": 84, "The Cheviot": 55,
 }
 DEMO_DATES = ["2026-01-14", "2026-01-15", "2026-01-16", "2026-01-17"]
 DEMO_DAY_FACTORS = [0.72, 1.0, 0.86, 0.55]
@@ -53,7 +60,7 @@ _PAGE = r"""<!doctype html>
 <title>SLM &mdash; UK Snow Outlook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 
@@ -67,8 +74,11 @@ _PAGE = r"""<!doctype html>
     --error: #c0392b;
     --shadow: 0 1px 2px rgba(16,29,40,0.04), 0 8px 24px rgba(16,29,40,0.06);
   }
+  /* Three themes: Light (default), Night (soft dark blue-grey), Dark (true black).
+     data-theme is set by the theme toggle JS and persisted to localStorage;
+     with no explicit choice, Night follows the OS dark-mode preference. */
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
       --bg: #0b141c; --surface: #101b24; --ink: #edf4f7; --ink-secondary: #a7bfca; --ink-muted: #6b8493;
       --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
       --land: #16232c; --land-stroke: #263944;
@@ -78,7 +88,7 @@ _PAGE = r"""<!doctype html>
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
     }
   }
-  :root[data-theme="dark"] {
+  :root[data-theme="night"] {
     --bg: #0b141c; --surface: #101b24; --ink: #edf4f7; --ink-secondary: #a7bfca; --ink-muted: #6b8493;
     --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
     --land: #16232c; --land-stroke: #26394d;
@@ -87,12 +97,21 @@ _PAGE = r"""<!doctype html>
     --error: #e0685a;
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
   }
+  :root[data-theme="dark"] {
+    --bg: #000000; --surface: #0a0a0a; --ink: #f2f5f7; --ink-secondary: #9fb3bd; --ink-muted: #5f7078;
+    --hairline: #161616; --hairline-strong: #262626; --accent: #6fa8e8; --accent-ink: #05090d;
+    --land: #0a0a0a; --land-stroke: #1c1c1c;
+    --cat-1: #9ec5f4; --cat-2: #6da7ec; --cat-3: #3987e5; --cat-4: #256abf; --cat-5: #184f95;
+    --locate-accent: #f0a94e;
+    --error: #e0685a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.6), 0 12px 28px rgba(0,0,0,0.55);
+  }
 
   * { box-sizing: border-box; }
   html, body { background: var(--bg); }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased; padding: 40px 20px 64px;
   }
   .page { max-width: 980px; margin: 0 auto; }
@@ -108,7 +127,7 @@ _PAGE = r"""<!doctype html>
     border-bottom: 1px solid var(--hairline-strong); padding-bottom: 22px; margin-bottom: 16px; flex-wrap: wrap;
   }
   h1 {
-    font-family: "Newsreader", Georgia, serif; font-weight: 500; font-size: clamp(32px, 5vw, 46px);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-weight: 600; font-size: clamp(20px, 2.6vw, 26px);
     line-height: 1.05; margin: 6px 0 0; text-wrap: balance; letter-spacing: -0.01em;
   }
   .subhead { margin: 10px 0 0; color: var(--ink-secondary); font-size: 15px; max-width: 46ch; }
@@ -140,7 +159,7 @@ _PAGE = r"""<!doctype html>
   }
   .locate-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .locate-btn {
-    font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px; font-weight: 600;
+    font-family: "Inter", sans-serif; font-size: 13.5px; font-weight: 600;
     background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
     padding: 9px 18px; cursor: pointer; flex: none; min-width: 140px;
   }
@@ -148,12 +167,25 @@ _PAGE = r"""<!doctype html>
   .locate-btn:disabled { opacity: 0.6; cursor: default; }
   .locate-error { display: none; color: var(--error); font-size: 12.5px; margin-top: 9px; }
   .locate-error.visible { display: block; }
-  .locate-result { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); gap: 4px 12px; flex-wrap: wrap; }
+  .locate-result { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); flex-direction: column; gap: 12px; }
   .locate-result.visible { display: flex; }
-  .locate-result .r-main { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
-  .locate-result .r-station { font-size: 14px; font-weight: 600; }
-  .locate-result .r-meta { font-size: 12px; color: var(--ink-muted); width: 100%; }
-  .locate-result .r-pct { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 600; margin-left: auto; }
+  .locate-result .r-head { display: flex; align-items: center; gap: 8px; }
+  .locate-result .r-station { font-size: 15px; font-weight: 600; }
+  .locate-result .r-stat { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; row-gap: 10px; }
+  .locate-result .r-pct {
+    font-family: "Inter", sans-serif; font-variant-numeric: tabular-nums;
+    font-size: 34px; font-weight: 700; line-height: 1;
+  }
+  .locate-result .r-cat-pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;
+    padding: 4px 11px; border-radius: 999px; border: 1.5px solid var(--hairline-strong);
+  }
+  .locate-result .r-detail { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .locate-result .r-detail-label {
+    font-family: "Inter", sans-serif; font-size: 10px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--ink-muted);
+  }
+  .locate-result .r-detail-value { font-size: 13px; color: var(--ink-secondary); }
 
   .star-btn {
     font-size: 20px; line-height: 1; background: none; border: none; cursor: pointer;
@@ -174,17 +206,12 @@ _PAGE = r"""<!doctype html>
     text-transform: uppercase; background: var(--cat-4); color: #fff; padding: 3px 8px; border-radius: 5px; flex: none;
   }
 
-  .status-row { font-size: 12px; color: var(--ink-muted); margin-bottom: 20px; }
-
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 22px; align-items: start; }
-  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
-
-  .map-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; box-shadow: var(--shadow); padding: 18px 18px 8px; position: relative; }
+  .map-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; box-shadow: var(--shadow); padding: 18px 18px 8px; position: relative; margin-bottom: 18px; }
   .map-card #map { width: 100%; height: 560px; border-radius: 10px; overflow: hidden; background: var(--land); }
   @media (max-width: 560px) { .map-card #map { height: 420px; } }
 
   .maplibregl-popup-content {
-    background: var(--ink); color: var(--bg); font-family: "IBM Plex Sans", sans-serif; font-size: 12px;
+    background: var(--ink); color: var(--bg); font-family: "Inter", sans-serif; font-size: 12px;
     padding: 9px 11px; border-radius: 9px; box-shadow: 0 8px 20px rgba(0,0,0,0.25); line-height: 1.5;
   }
   .maplibregl-popup-tip { border-top-color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
@@ -213,22 +240,40 @@ _PAGE = r"""<!doctype html>
   .legend-shapes .shape-item { display: flex; align-items: center; gap: 7px; }
   .shape-swatch { width: 12px; height: 12px; flex: none; background: var(--ink-muted); }
   .shape-swatch.circle { border-radius: 50%; }
+  .shape-swatch.mountain { clip-path: polygon(0% 100%, 33% 20%, 46% 55%, 63% 5%, 100% 100%); opacity: 0.7; }
+  .shape-swatch.square { border-radius: 2px; }
   .shape-swatch.diamond { transform: rotate(45deg); }
   .shape-swatch.star { background: var(--locate-accent); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 
-  aside.rail { display: flex; flex-direction: column; gap: 14px; }
-  .panel { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 16px 16px 6px; box-shadow: var(--shadow); }
+  .panel { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 16px 16px 14px; box-shadow: var(--shadow); margin-bottom: 18px; }
   .panel h2 { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); margin: 0; display: flex; align-items: center; gap: 7px; }
   .panel h2 .shape-swatch { margin: 0; }
   .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-  .toggle.compact { padding: 2px; }
+  .panel-collapse-btn {
+    display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 2px;
+    margin: -2px; cursor: pointer; border-radius: 6px;
+  }
+  .panel-collapse-btn:hover { background: var(--bg); }
+  .panel-collapse-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .panel-collapse-btn .chevron { font-size: 9px; color: var(--ink-muted); transition: transform 150ms ease; }
+  .panel.collapsed .panel-collapse-btn .chevron { transform: rotate(-90deg); }
+  .panel.collapsed #panel-body { display: none; }
+  .panel.collapsed .panel-head { margin-bottom: 0; }
+  .toggle.compact { padding: 2px; flex-wrap: wrap; row-gap: 2px; }
   .toggle.compact button { padding: 5px 10px; font-size: 11px; }
-  .station-list-scroll { max-height: 340px; overflow-y: auto; }
-  .station { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--hairline); }
-  .panel .station:first-of-type { border-top: none; }
+  .station-list-scroll {
+    display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 10px;
+    scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+  }
+  .station {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px; position: relative;
+    flex: none; width: 168px; padding: 12px 13px; border: 1px solid var(--hairline);
+    border-radius: 10px; background: var(--bg);
+  }
+  .station .star-btn.starred { position: absolute; top: 6px; right: 6px; font-size: 15px; }
   .station-name { font-size: 13px; font-weight: 500; }
   .station-region { font-size: 11px; color: var(--ink-muted); }
-  .station-pct { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; flex: none; text-align: right; min-width: 48px; }
+  .station-pct { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; }
   .chip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; flex: none; }
 
   .table-section { margin-top: 26px; }
@@ -255,11 +300,15 @@ _PAGE = r"""<!doctype html>
 <div class="page">
   <header class="masthead">
     <div>
-      <div class="eyebrow"><span class="dot"></span>SLM &middot; SNOW LIKELIHOOD MODEL</div>
-      <h1>Where it's likely to snow</h1>
-      <p class="subhead">Blended synoptic + ensemble snow-likelihood across twelve UK stations, from mountain summits to sea level.</p>
+      <h1>SLM &middot; Snow Likelihood Model</h1>
+      <p class="subhead">Blended synoptic + ensemble snow-likelihood across thirty-nine UK stations, from mountain summits through mid-elevation uplands to sea level.</p>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+      <div class="toggle compact" role="group" aria-label="Theme">
+        <button id="theme-toggle-light">Light</button>
+        <button id="theme-toggle-night">Night</button>
+        <button id="theme-toggle-dark">Dark</button>
+      </div>
       <div class="toggle" role="group" aria-label="Data source">
         <button id="btn-live" class="active">Live forecast</button>
         <button id="btn-demo">Example scenario</button>
@@ -277,15 +326,36 @@ _PAGE = r"""<!doctype html>
     </div>
     <div class="locate-error" id="locate-error"></div>
     <div class="locate-result" id="locate-result">
-      <div class="r-main">
+      <div class="r-head">
         <button class="star-btn" id="r-star" title="Save to favourites" aria-pressed="false">&#9734;</button>
-        <div>
-          <div class="r-station" id="r-station"></div>
-          <div class="station-region" id="r-elev"></div>
-        </div>
-        <div class="r-pct" id="r-pct"></div>
+        <div class="r-station" id="r-station"></div>
       </div>
-      <div class="r-meta" id="r-meta"></div>
+      <div class="r-stat">
+        <span class="r-pct" id="r-pct"></span>
+        <span class="r-cat-pill" id="r-cat-pill"><span class="chip" id="r-cat-dot"></span><span id="r-cat-text"></span></span>
+        <div class="r-detail"><span class="r-detail-label">Peak day</span><span class="r-detail-value" id="r-peak-date"></span></div>
+        <div class="r-detail"><span class="r-detail-label">Elevation</span><span class="r-detail-value" id="r-elev"></span></div>
+        <div class="r-detail"><span class="r-detail-label">Coordinates</span><span class="r-detail-value" id="r-coords"></span></div>
+        <div class="r-detail" id="r-nearest-row"><span class="r-detail-label">Nearest station</span><span class="r-detail-value" id="r-nearest"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel collapsed" id="stations-panel">
+    <div class="panel-head">
+      <button class="panel-collapse-btn" id="panel-collapse-btn" aria-expanded="false" aria-controls="panel-body">
+        <span class="chevron">&#9660;</span>
+        <h2>Reference stations</h2>
+      </button>
+      <div class="toggle compact" role="group" aria-label="Elevation band">
+        <button id="elev-toggle-sea">&lt;__SEA_LEVEL_MAX__m</button>
+        <button id="elev-toggle-mid">201&ndash;500m</button>
+        <button id="elev-toggle-mountain" class="active">__MOUNTAIN_MIN__&ndash;__MAX_ELEV__m</button>
+        <button id="elev-toggle-favourites">Favourites</button>
+      </div>
+    </div>
+    <div id="panel-body">
+      <div id="station-list" class="station-list-scroll"></div>
     </div>
   </div>
 
@@ -294,47 +364,40 @@ _PAGE = r"""<!doctype html>
     <span>This is a fabricated cold-snap scenario used to show the full likelihood range &mdash; not a real forecast.</span>
   </div>
 
-  <div class="status-row">Sea-level threshold: &lt; __SEA_LEVEL_MAX__m &middot; station snapshot auto-refreshes every 30 minutes &middot; postcode lookups run live, cached 30 min per postcode</div>
-
-  <div class="layout">
-    <div class="map-card">
-      <div id="map"></div>
-      <div class="legend">
-        <span class="legend-title">Peak likelihood</span>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-1)"></span><span>Very low</span></div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-2)"></span><span>Low</span></div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-3)"></span><span>Moderate</span></div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-4)"></span><span>High</span></div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-5)"></span><span>Very high</span></div>
-      </div>
-      <div class="legend-shapes">
-        <div class="shape-item"><span class="shape-swatch circle"></span>Mountain &amp; summit station</div>
-        <div class="shape-item"><span class="shape-swatch diamond"></span>Sea level &amp; lowland (&lt; __SEA_LEVEL_MAX__m)</div>
-        <div class="shape-item"><span class="shape-swatch star"></span>Your checked location</div>
-      </div>
+  <div class="map-card">
+    <div id="map"></div>
+    <div class="legend">
+      <span class="legend-title">Peak likelihood</span>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-1)"></span><span>Very low</span></div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-2)"></span><span>Low</span></div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-3)"></span><span>Moderate</span></div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-4)"></span><span>High</span></div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--cat-5)"></span><span>Very high</span></div>
     </div>
-
-    <aside class="rail">
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Reference stations</h2>
-          <div class="toggle compact" role="group" aria-label="Elevation band">
-            <button id="elev-toggle-mountain" class="active">&gt;200m</button>
-            <button id="elev-toggle-sea">&lt;200m</button>
-            <button id="elev-toggle-favourites">Favourites</button>
-          </div>
-        </div>
-        <div id="station-list" class="station-list-scroll"></div>
-      </div>
-    </aside>
+    <div class="legend-shapes">
+      <div class="shape-item"><span class="shape-swatch mountain"></span>Mountain &amp; summit station (__MOUNTAIN_MIN__&ndash;__MAX_ELEV__m)</div>
+      <div class="shape-item"><span class="shape-swatch square"></span>Mid-elevation &amp; upland (201&ndash;500m)</div>
+      <div class="shape-item"><span class="shape-swatch diamond"></span>Sea level &amp; lowland (&lt; __SEA_LEVEL_MAX__m)</div>
+      <div class="shape-item"><span class="shape-swatch star"></span>Your checked location</div>
+    </div>
   </div>
 
   <div class="table-section">
-    <h3><span class="shape-swatch circle"></span>Mountains &amp; summits (&ge; __SEA_LEVEL_MAX__m)</h3>
+    <h3><span class="shape-swatch mountain"></span>Mountains &amp; summits (__MOUNTAIN_MIN__&ndash;__MAX_ELEV__m)</h3>
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr><th>Station</th><th>Region</th><th>Elev.</th><th>Peak day</th><th>Peak %</th><th>Category</th></tr></thead>
         <tbody id="table-body-mountain"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <h3><span class="shape-swatch square"></span>Mid-elevation &amp; upland (201&ndash;500m)</h3>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Station</th><th>Region</th><th>Elev.</th><th>Peak day</th><th>Peak %</th><th>Category</th></tr></thead>
+        <tbody id="table-body-mid"></tbody>
       </table>
     </div>
   </div>
@@ -361,6 +424,18 @@ const DATA = __DATA_JSON__;
 
 const CAT_VAR = { "Very low": "--cat-1", "Low": "--cat-2", "Moderate": "--cat-3", "High": "--cat-4", "Very high": "--cat-5" };
 function catColor(cat) { return getComputedStyle(document.documentElement).getPropertyValue(CAT_VAR[cat] || "--cat-1").trim(); }
+
+// Renders any "YYYY-MM-DD..." string as "D Month YYYY", preserving whatever
+// follows the date (a time/UTC suffix, or the demo's "(example)" marker).
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+function formatDate(value) {
+  if (!value) return value;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
+  if (!m) return value;
+  const [, y, mo, d, rest] = m;
+  return parseInt(d, 10) + " " + MONTH_NAMES[parseInt(mo, 10) - 1] + " " + y + rest;
+}
 function radiusFor(pct) {
   const minR = 6, maxR = 17;
   const t = Math.sqrt(Math.max(0, Math.min(100, pct)) / 100);
@@ -385,7 +460,7 @@ function toGeoJSON(dataset) {
 function popupHTML(p) {
   return '<span class="mm-name">' + p.name + '</span>' +
     '<span class="mm-meta">' + p.region + ' &middot; ' + p.elev + 'm</span><br>' +
-    '<span class="mm-meta">peak ' + p.peak_pct.toFixed(1) + '% &middot; ' + p.peak_category + ' &middot; ' + p.peak_date + '</span>';
+    '<span class="mm-meta">peak ' + p.peak_pct.toFixed(1) + '% &middot; ' + p.peak_category + ' &middot; ' + formatDate(p.peak_date) + '</span>';
 }
 
 // 20x20 SDF diamond, tintable per-feature via icon-color.
@@ -400,14 +475,57 @@ function makeDiamondSDF() {
   return ctx.getImageData(0, 0, 20, 20);
 }
 
+// 20x20 SDF square, tintable per-feature via icon-color.
+function makeSquareSDF() {
+  const c = document.createElement("canvas");
+  c.width = 20; c.height = 20;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(2, 2, 16, 16);
+  return ctx.getImageData(0, 0, 20, 20);
+}
+
+// 20x20 SDF twin-peak mountain silhouette, tintable per-feature via icon-color.
+function makeMountainSDF() {
+  const c = document.createElement("canvas");
+  c.width = 20; c.height = 20;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.moveTo(2, 18);
+  ctx.lineTo(8, 5);
+  ctx.lineTo(11, 10);
+  ctx.lineTo(15, 2);
+  ctx.lineTo(19, 18);
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, 20, 20);
+}
+
 const UK_BOUNDS = (() => {
   const lats = DATA.live.locations.map(l => l.lat), lons = DATA.live.locations.map(l => l.lon);
   return [[Math.min(...lons) - 0.8, Math.min(...lats) - 0.5], [Math.max(...lons) + 0.8, Math.max(...lats) + 0.5]];
 })();
 
+// ---- theme (Light / Night / Dark) ----
+const THEME_KEY = "snowOutlookTheme";
+const THEMES = ["light", "night", "dark"];
 const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
+
+function getStoredTheme() {
+  try { return localStorage.getItem(THEME_KEY); } catch { return null; }
+}
+function setStoredTheme(theme) {
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
+}
+
+// No stored choice yet -> follow the OS, but only as far as Light/Night;
+// Dark (true black) is only ever reached by an explicit pick, never auto-set.
+let currentTheme = getStoredTheme() || (darkMedia.matches ? "night" : "light");
+document.documentElement.dataset.theme = currentTheme;
+
 function mapStyleUrl() {
-  return "https://tiles.openfreemap.org/styles/" + (darkMedia.matches ? "dark" : "positron");
+  return "https://tiles.openfreemap.org/styles/" + (currentTheme === "light" ? "positron" : "dark");
 }
 
 const map = new maplibregl.Map({
@@ -419,11 +537,34 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
-darkMedia.addEventListener("change", () => map.setStyle(mapStyleUrl()));
+
+function syncThemeButtons() {
+  THEMES.forEach(t => document.getElementById("theme-toggle-" + t).classList.toggle("active", t === currentTheme));
+}
+syncThemeButtons();
+
+function setTheme(theme, persist = true) {
+  currentTheme = theme;
+  document.documentElement.dataset.theme = theme;
+  syncThemeButtons();
+  if (persist) setStoredTheme(theme);
+  // diff:false forces a full style reload (and a fresh "style.load" event) --
+  // MapLibre's default diff-based update strips our runtime-added
+  // sources/layers/images (they're not part of either base style's JSON)
+  // without ever re-firing "style.load" to let us re-add them.
+  map.setStyle(mapStyleUrl(), { diff: false });
+}
+THEMES.forEach(t => document.getElementById("theme-toggle-" + t).addEventListener("click", () => setTheme(t)));
+
+// Once the visitor has picked a theme explicitly, stop following OS changes.
+darkMedia.addEventListener("change", () => {
+  if (getStoredTheme()) return;
+  setTheme(darkMedia.matches ? "night" : "light", false);
+});
 
 let currentDataset = null;
 let youMarker = null;
-let listMode = "mountain"; // "mountain" (>200m), "sea_level" (<200m), or "favourites"
+let listMode = "mountain"; // "mountain" (>500m), "mid" (201-500m), "sea_level" (<200m), or "favourites"
 
 // ---- favourites (saved to this browser, no account system) ----
 
@@ -527,15 +668,38 @@ async function renderFavouritesList() {
 
 function setListMode(mode) {
   listMode = mode;
-  ["mountain", "sea_level", "favourites"].forEach(m => {
+  ["mountain", "mid", "sea_level", "favourites"].forEach(m => {
     document.getElementById("elev-toggle-" + (m === "sea_level" ? "sea" : m)).classList.toggle("active", m === mode);
   });
   renderStationList();
 }
 
-document.getElementById("elev-toggle-mountain").addEventListener("click", () => setListMode("mountain"));
 document.getElementById("elev-toggle-sea").addEventListener("click", () => setListMode("sea_level"));
+document.getElementById("elev-toggle-mid").addEventListener("click", () => setListMode("mid"));
+document.getElementById("elev-toggle-mountain").addEventListener("click", () => setListMode("mountain"));
 document.getElementById("elev-toggle-favourites").addEventListener("click", () => setListMode("favourites"));
+
+// ---- reference-stations panel collapse (remembered per browser) ----
+const PANEL_COLLAPSE_KEY = "snowOutlookStationsCollapsed";
+const stationsPanel = document.getElementById("stations-panel");
+const panelCollapseBtn = document.getElementById("panel-collapse-btn");
+
+function getStoredCollapse() {
+  try {
+    const v = localStorage.getItem(PANEL_COLLAPSE_KEY);
+    return v === null ? true : v === "1"; // collapsed by default until the visitor opens it
+  } catch { return true; }
+}
+function setStoredCollapse(collapsed) {
+  try { localStorage.setItem(PANEL_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch { /* ignore */ }
+}
+function setPanelCollapsed(collapsed) {
+  stationsPanel.classList.toggle("collapsed", collapsed);
+  panelCollapseBtn.setAttribute("aria-expanded", String(!collapsed));
+  setStoredCollapse(collapsed);
+}
+panelCollapseBtn.addEventListener("click", () => setPanelCollapsed(!stationsPanel.classList.contains("collapsed")));
+setPanelCollapsed(getStoredCollapse());
 
 function renderMap(dataset) {
   currentDataset = dataset;
@@ -546,6 +710,7 @@ function renderMap(dataset) {
   }
 
   const mountains = dataset.locations.filter(l => l.elev_class === "mountain").sort((a, b) => b.peak_pct - a.peak_pct);
+  const mid = dataset.locations.filter(l => l.elev_class === "mid").sort((a, b) => b.peak_pct - a.peak_pct);
   const sea = dataset.locations.filter(l => l.elev_class === "sea_level").sort((a, b) => b.peak_pct - a.peak_pct);
 
   renderStationList();
@@ -559,67 +724,78 @@ function renderMap(dataset) {
         '<td>' + loc.name + '</td>' +
         '<td style="color:var(--ink-secondary)">' + loc.region + '</td>' +
         '<td class="num">' + loc.elev + ' m</td>' +
-        '<td>' + loc.peak_date + '</td>' +
+        '<td>' + formatDate(loc.peak_date) + '</td>' +
         '<td class="num" style="color:' + catColor(loc.peak_category) + '; font-weight:600;">' + loc.peak_pct.toFixed(1) + '%</td>' +
         '<td><span class="cat-pill"><span class="chip" style="background:' + catColor(loc.peak_category) + '"></span>' + loc.peak_category + '</span></td>';
       tbody.appendChild(tr);
     });
   }
   fillTable("table-body-mountain", mountains);
+  fillTable("table-body-mid", mid);
   fillTable("table-body-sea", sea);
 
-  document.getElementById("meta-line").innerHTML = "generated <strong>" + dataset.generated + "</strong>";
+  document.getElementById("meta-line").innerHTML = "generated <strong>" + formatDate(dataset.generated) + "</strong>";
   document.getElementById("scenario-banner").classList.toggle("visible", dataset === DATA.demo);
 }
 
 // Re-runs on initial load AND after setStyle() (theme switch), since a new
 // style wipes custom sources/layers/images but not map-level event listeners.
 map.on("style.load", () => {
-  map.addImage("diamond-sdf", makeDiamondSDF(), { sdf: true });
+  // Guard every add* call: some browsers/style-reload timings re-fire
+  // "style.load" for a style that already has our runtime images/sources/
+  // layers still attached, and an "already exists" exception here would
+  // abort the rest of this handler -- silently dropping every layer after
+  // the failure point, including the station icon layers.
+  if (!map.hasImage("diamond-sdf")) map.addImage("diamond-sdf", makeDiamondSDF(), { sdf: true });
+  if (!map.hasImage("square-sdf")) map.addImage("square-sdf", makeSquareSDF(), { sdf: true });
+  if (!map.hasImage("mountain-sdf")) map.addImage("mountain-sdf", makeMountainSDF(), { sdf: true });
 
-  map.addSource("stations", { type: "geojson", data: toGeoJSON(DATA.live) });
+  if (!map.getSource("stations")) {
+    map.addSource("stations", { type: "geojson", data: toGeoJSON(DATA.live) });
+  }
 
   // Subtle hillshade for terrain texture, inserted just below labels.
-  map.addSource("terrain-dem", {
-    type: "raster-dem",
-    tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-    encoding: "terrarium",
-    tileSize: 256,
-    maxzoom: 15,
-  });
-  const firstSymbolId = map.getStyle().layers.find(l => l.type === "symbol")?.id;
-  map.addLayer({
-    id: "hillshade", type: "hillshade", source: "terrain-dem",
-    paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#7c95a1", "hillshade-highlight-color": "#ffffff" },
-  }, firstSymbolId);
+  if (!map.getSource("terrain-dem")) {
+    map.addSource("terrain-dem", {
+      type: "raster-dem",
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      encoding: "terrarium",
+      tileSize: 256,
+      maxzoom: 15,
+    });
+  }
+  if (!map.getLayer("hillshade")) {
+    const firstSymbolId = map.getStyle().layers.find(l => l.type === "symbol")?.id;
+    map.addLayer({
+      id: "hillshade", type: "hillshade", source: "terrain-dem",
+      paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#7c95a1", "hillshade-highlight-color": "#ffffff" },
+    }, firstSymbolId);
+  }
 
-  map.addLayer({
-    id: "stations-mountain-halo", type: "circle", source: "stations",
-    filter: ["==", ["get", "elev_class"], "mountain"],
-    paint: {
-      "circle-radius": ["+", ["get", "radius"], 6],
-      "circle-color": "transparent",
-      "circle-stroke-width": 1,
-      "circle-stroke-color": ["get", "color"],
-      "circle-stroke-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.35, 0],
-    },
-  });
-  map.addLayer({
-    id: "stations-mountain", type: "circle", source: "stations",
-    filter: ["==", ["get", "elev_class"], "mountain"],
-    paint: {
-      "circle-radius": ["get", "radius"],
-      "circle-color": ["get", "color"],
-      "circle-stroke-width": 1.6,
-      "circle-stroke-color": "#ffffff",
-    },
-  });
-  map.addLayer({
-    id: "stations-sea", type: "symbol", source: "stations",
-    filter: ["==", ["get", "elev_class"], "sea_level"],
-    layout: { "icon-image": "diamond-sdf", "icon-size": ["/", ["get", "radius"], 8], "icon-allow-overlap": true },
-    paint: { "icon-color": ["get", "color"] },
-  });
+  if (!map.getLayer("stations-mountain")) {
+    map.addLayer({
+      id: "stations-mountain", type: "symbol", source: "stations",
+      filter: ["==", ["get", "elev_class"], "mountain"],
+      layout: { "icon-image": "mountain-sdf", "icon-size": ["/", ["get", "radius"], 11], "icon-allow-overlap": true },
+      paint: { "icon-color": ["get", "color"], "icon-opacity": 0.7 },
+    });
+  }
+  if (!map.getLayer("stations-mid")) {
+    map.addLayer({
+      id: "stations-mid", type: "symbol", source: "stations",
+      filter: ["==", ["get", "elev_class"], "mid"],
+      layout: { "icon-image": "square-sdf", "icon-size": ["/", ["get", "radius"], 8], "icon-allow-overlap": true },
+      paint: { "icon-color": ["get", "color"] },
+    });
+  }
+  if (!map.getLayer("stations-sea")) {
+    map.addLayer({
+      id: "stations-sea", type: "symbol", source: "stations",
+      filter: ["==", ["get", "elev_class"], "sea_level"],
+      layout: { "icon-image": "diamond-sdf", "icon-size": ["/", ["get", "radius"], 8], "icon-allow-overlap": true },
+      paint: { "icon-color": ["get", "color"] },
+    });
+  }
 
   renderMap(currentDataset || DATA.live);
 });
@@ -627,7 +803,7 @@ map.on("style.load", () => {
 // Registered once (not per style reload) -- MapLibre re-fires these for the
 // new style's re-added layers of the same id automatically.
 const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
-["stations-mountain", "stations-sea"].forEach(layerId => {
+["stations-mountain", "stations-mid", "stations-sea"].forEach(layerId => {
   map.on("mouseenter", layerId, (e) => {
     map.getCanvas().style.cursor = "pointer";
     const f = e.features[0];
@@ -709,15 +885,29 @@ async function runLocate() {
     map.flyTo({ center: [body.lon, body.lat], zoom: Math.max(map.getZoom(), 9), speed: 0.8 });
 
     document.getElementById("r-station").textContent = body.label + (body.precise ? "" : " (district centre)");
-    document.getElementById("r-elev").textContent = body.elevation_m + "m elevation (model grid) · " + body.lat.toFixed(3) + ", " + body.lon.toFixed(3);
+
     const pctEl = document.getElementById("r-pct");
-    pctEl.textContent = body.peak_pct.toFixed(1) + "% · " + body.peak_category;
+    pctEl.textContent = body.peak_pct.toFixed(1) + "%";
     pctEl.style.color = color;
-    let meta = "Live model run for this exact point · peak " + body.peak_date;
+
+    const pillEl = document.getElementById("r-cat-pill");
+    pillEl.style.borderColor = color;
+    pillEl.style.color = color;
+    document.getElementById("r-cat-dot").style.background = color;
+    document.getElementById("r-cat-text").textContent = body.peak_category;
+
+    document.getElementById("r-peak-date").textContent = formatDate(body.peak_date);
+    document.getElementById("r-elev").textContent = body.elevation_m + "m (model grid)";
+    document.getElementById("r-coords").textContent = body.lat.toFixed(3) + ", " + body.lon.toFixed(3);
+
+    const nearestRow = document.getElementById("r-nearest-row");
     if (body.nearest_station) {
-      meta += " · nearest fixed station: " + body.nearest_station + " (" + body.nearest_station_km + "km away)";
+      nearestRow.style.display = "";
+      document.getElementById("r-nearest").textContent = body.nearest_station + " (" + body.nearest_station_km + "km away)";
+    } else {
+      nearestRow.style.display = "none";
     }
-    document.getElementById("r-meta").textContent = meta;
+
     resultEl.classList.add("visible");
 
     lastLocateResult = { label: body.label, lat: body.lat, lon: body.lon };
@@ -744,4 +934,6 @@ def HTML_TEMPLATE(live: dict, demo: dict) -> str:
     html = _PAGE
     html = html.replace("__DATA_JSON__", json.dumps(data, separators=(",", ":")))
     html = html.replace("__SEA_LEVEL_MAX__", str(SEA_LEVEL_MAX_M))
+    html = html.replace("__MOUNTAIN_MIN__", str(MID_MAX_M))
+    html = html.replace("__MAX_ELEV__", str(MAX_ELEV_M))
     return html

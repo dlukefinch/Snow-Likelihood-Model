@@ -95,7 +95,14 @@ PEAK_BY_NAME = {
     "Ben Nevis Summit": 96, "Cairn Gorm Summit": 93, "Nevis Range (Aonach Mor)": 89,
     "The Lecht": 79, "Glenshee": 73, "Glencoe Mountain": 68, "Cross Fell": 59,
     "Scafell Pike": 53, "Yr Wyddfa (Snowdon)": 47, "Kinder Scout": 26,
-    "Edinburgh": 16, "London": 3,
+    "Edinburgh": 16, "London": 3, "Cardiff": 4, "Belfast": 9,
+    "Aviemore": 34, "Alston": 38, "Buxton": 41,
+    "Newcastle upon Tyne": 12, "Bristol": 3, "Southampton": 2,
+    "Aberdeen": 18, "Norwich": 4, "Nottingham": 6,
+    "Brighton": 5, "St Ives": 3, "Margate": 6, "Corby": 11,
+    "Whitby": 9, "Alnwick": 13,
+    "Tomintoul": 42, "Malham": 24, "Princetown": 33, "Storey Arms": 36, "Glenshane Pass": 44,
+    "Pen y Fan": 62, "Slieve Donard": 58, "High Willhays": 45, "Helvellyn": 84, "The Cheviot": 55,
 }
 DEMO_DATES = ["2026-01-14", "2026-01-15", "2026-01-16", "2026-01-17"]
 DEMO_DAY_FACTORS = [0.72, 1.0, 0.86, 0.55]
@@ -124,7 +131,7 @@ HTML_TEMPLATE = r"""<!doctype html>
 <title>UK Snow Outlook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
   :root {
@@ -158,7 +165,7 @@ HTML_TEMPLATE = r"""<!doctype html>
   html, body { background: var(--bg); }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased; padding: 40px 20px 64px;
   }
   .page { max-width: 980px; margin: 0 auto; }
@@ -174,7 +181,7 @@ HTML_TEMPLATE = r"""<!doctype html>
     border-bottom: 1px solid var(--hairline-strong); padding-bottom: 22px; margin-bottom: 16px; flex-wrap: wrap;
   }
   h1 {
-    font-family: "Newsreader", Georgia, serif; font-weight: 500; font-size: clamp(32px, 5vw, 46px);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-weight: 600; font-size: clamp(32px, 5vw, 46px);
     line-height: 1.05; margin: 6px 0 0; text-wrap: balance; letter-spacing: -0.01em;
   }
   .subhead { margin: 10px 0 0; color: var(--ink-secondary); font-size: 15px; max-width: 46ch; }
@@ -205,7 +212,7 @@ HTML_TEMPLATE = r"""<!doctype html>
   }
   .locate-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .locate-btn {
-    font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px; font-weight: 600;
+    font-family: "Inter", sans-serif; font-size: 13.5px; font-weight: 600;
     background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
     padding: 9px 18px; cursor: pointer; flex: none;
   }
@@ -322,7 +329,7 @@ HTML_TEMPLATE = r"""<!doctype html>
     <div>
       <div class="eyebrow"><span class="dot"></span>UK SNOW OUTLOOK</div>
       <h1>Where it's likely to snow</h1>
-      <p class="subhead">Blended synoptic + ensemble snow-likelihood across twelve UK stations, from mountain summits to sea level.</p>
+      <p class="subhead">Blended synoptic + ensemble snow-likelihood across thirty-nine UK stations, from mountain summits to sea level.</p>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
       <div class="toggle" role="group" aria-label="Data source">
@@ -495,7 +502,7 @@ function renderMap(dataset) {
   const markersG = document.getElementById("markers");
   markersG.innerHTML = "";
   markerElsByName = {};
-  const mountains = dataset.locations.filter(l => l.elev_class === "mountain").sort((a, b) => b.peak_pct - a.peak_pct);
+  const mountains = dataset.locations.filter(l => l.elev_class !== "sea_level").sort((a, b) => b.peak_pct - a.peak_pct);
   const sea = dataset.locations.filter(l => l.elev_class === "sea_level").sort((a, b) => b.peak_pct - a.peak_pct);
 
   dataset.locations.forEach(loc => {
@@ -503,11 +510,11 @@ function renderMap(dataset) {
     g.setAttribute("class", "marker");
     g.setAttribute("tabindex", "0");
     g.setAttribute("role", "img");
-    g.setAttribute("aria-label", loc.name + ", " + (loc.elev_class === "mountain" ? "mountain station" : "sea level station") + ", peak " + loc.peak_pct.toFixed(1) + "%, " + loc.peak_category);
+    g.setAttribute("aria-label", loc.name + ", " + (loc.elev_class !== "sea_level" ? "mountain station" : "sea level station") + ", peak " + loc.peak_pct.toFixed(1) + "%, " + loc.peak_category);
 
     const r = radiusFor(loc.peak_pct);
     const color = catColor(loc.peak_category);
-    const isMountain = loc.elev_class === "mountain";
+    const isMountain = loc.elev_class !== "sea_level";
 
     if (isMountain) {
       const halo = document.createElementNS(svgNS, "circle");
