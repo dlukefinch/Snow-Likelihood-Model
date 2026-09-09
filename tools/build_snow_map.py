@@ -128,7 +128,7 @@ def build_demo(xy_by_name: dict) -> dict:
 
 
 HTML_TEMPLATE = r"""<!doctype html>
-<title>UK Snow Outlook</title>
+<title>SLM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
