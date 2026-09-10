@@ -9,8 +9,10 @@ Run locally:
     uvicorn webapp.app:app --reload --port 8000
 
 Deploy: run behind a reverse proxy (nginx) terminating TLS, e.g.
-    uvicorn webapp.app:app --host 127.0.0.1 --port 8000 --workers 2
-as a systemd service, with nginx proxy_pass to 127.0.0.1:8000.
+    uvicorn webapp.app:app --host 127.0.0.1 --port 8000 --workers 1
+as a systemd service, with nginx proxy_pass to 127.0.0.1:8000. Stick to
+--workers 1 -- station refresh and postcode caching/rate-limiting are
+in-memory per-process state with nothing shared across workers.
 """
 
 from __future__ import annotations
