@@ -510,7 +510,6 @@ const UK_BOUNDS = (() => {
 // ---- theme (Light / Night / Dark) ----
 const THEME_KEY = "snowOutlookTheme";
 const THEMES = ["light", "night", "dark"];
-const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
 
 function getStoredTheme() {
   try { return localStorage.getItem(THEME_KEY); } catch { return null; }
@@ -519,9 +518,9 @@ function setStoredTheme(theme) {
   try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
 }
 
-// No stored choice yet -> follow the OS, but only as far as Light/Night;
-// Dark (true black) is only ever reached by an explicit pick, never auto-set.
-let currentTheme = getStoredTheme() || (darkMedia.matches ? "night" : "light");
+// No stored choice yet -> default to Dark (true black) regardless of OS
+// preference. Visitors can still switch to Light/Night manually.
+let currentTheme = getStoredTheme() || "dark";
 document.documentElement.dataset.theme = currentTheme;
 
 function mapStyleUrl() {
@@ -555,12 +554,6 @@ function setTheme(theme, persist = true) {
   map.setStyle(mapStyleUrl(), { diff: false });
 }
 THEMES.forEach(t => document.getElementById("theme-toggle-" + t).addEventListener("click", () => setTheme(t)));
-
-// Once the visitor has picked a theme explicitly, stop following OS changes.
-darkMedia.addEventListener("change", () => {
-  if (getStoredTheme()) return;
-  setTheme(darkMedia.matches ? "night" : "light", false);
-});
 
 let currentDataset = null;
 let youMarker = null;
