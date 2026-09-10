@@ -218,6 +218,22 @@ _PAGE = r"""<!doctype html>
   .mm-name { font-weight: 600; display: block; margin-bottom: 2px; }
   .mm-meta { font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 11px; opacity: 0.8; }
 
+  /* Muted, theme-matched map attribution -- OpenFreeMap/OSM's terms require
+     it stay present and reachable, so it's dimmed rather than removed. */
+  .maplibregl-ctrl-attrib.maplibregl-compact,
+  .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    background-color: var(--surface) !important; color: var(--ink-secondary); box-shadow: var(--shadow);
+  }
+  .maplibregl-ctrl-attrib.maplibregl-compact { opacity: 0.35; transition: opacity 150ms ease; }
+  .maplibregl-ctrl-attrib.maplibregl-compact:hover, .maplibregl-ctrl-attrib.maplibregl-compact-show { opacity: 1; }
+  .maplibregl-ctrl-attrib.maplibregl-compact:after { background-image: none !important; }
+  .maplibregl-ctrl-attrib-button { background-color: transparent !important; background-image: none !important; }
+  .maplibregl-ctrl-attrib-button:after {
+    content: ""; position: absolute; inset: 0; margin: auto;
+    width: 4px; height: 4px; border-radius: 50%; background: var(--ink-muted);
+  }
+  .maplibregl-ctrl-attrib a { color: var(--ink-secondary) !important; }
+
   @keyframes locate-pulse { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 0.25; transform: scale(1.35); } }
   .you-marker { position: relative; width: 22px; height: 22px; }
   .you-marker .ring {
@@ -536,6 +552,11 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+// MapLibre's compact attribution starts expanded and only collapses to the
+// small icon after the map's first drag (it's bound to the "drag" event
+// internally) -- collapse it immediately instead of waiting for that.
+map.getContainer().querySelectorAll(".maplibregl-ctrl-attrib.maplibregl-compact-show")
+  .forEach(el => el.classList.remove("maplibregl-compact-show"));
 
 function syncThemeButtons() {
   THEMES.forEach(t => document.getElementById("theme-toggle-" + t).classList.toggle("active", t === currentTheme));
