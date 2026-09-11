@@ -329,13 +329,13 @@ _PAGE = r"""<!doctype html>
         <button id="btn-live" class="active">Live forecast</button>
         <button id="btn-demo">Example scenario</button>
       </div>
-      <div class="masthead-meta" id="meta-line">generated <strong>&mdash;</strong></div>
+      <div class="masthead-meta" id="meta-line">generated <strong>-</strong></div>
     </div>
   </header>
 
   <div class="locate-card">
     <div class="locate-label">Check your exact location</div>
-    <div class="locate-sub">Runs the live model for your real coordinates &mdash; not borrowed from the nearest station.</div>
+    <div class="locate-sub">Runs the live model for your real coordinates - not borrowed from the nearest station.</div>
     <div class="locate-row">
       <input class="locate-input" id="locate-input" type="text" placeholder="Enter a UK postcode, e.g. EH1 or SW1A 1AA" autocomplete="off">
       <button class="locate-btn" id="locate-btn">Check likelihood</button>
@@ -377,7 +377,7 @@ _PAGE = r"""<!doctype html>
 
   <div class="scenario-banner" id="scenario-banner">
     <span class="tag">Illustrative</span>
-    <span>This is a fabricated cold-snap scenario used to show the full likelihood range &mdash; not a real forecast.</span>
+    <span>This is a fabricated cold-snap scenario used to show the full likelihood range - not a real forecast.</span>
   </div>
 
   <div class="map-card">
@@ -430,7 +430,7 @@ _PAGE = r"""<!doctype html>
 
   <footer>
     <strong>Method:</strong> each point blends a synoptic rules-based score (thickness, freezing level, wet-bulb proxy) with multi-model ensemble agreement (UK Met Office, DWD ICON, NOAA GFS, ECMWF), 40/60 weighted, via the open-source <strong>SLM</strong> (Snow Likelihood Model). Weather data from <a href="https://open-meteo.com">Open-Meteo</a>, postcode geocoding from <a href="https://postcodes.io">postcodes.io</a>.<br>
-    This is an independent hobby forecast, not an official warning service &mdash; it is not a substitute for Met Office, SAIS, or mountain safety advice.
+    This is an independent hobby forecast, not an official warning service - it is not a substitute for Met Office, SAIS, or mountain safety advice.
   </footer>
 
 </div>
@@ -636,7 +636,7 @@ async function renderFavouritesList() {
   const list = document.getElementById("station-list");
   const favs = getFavourites();
   if (favs.length === 0) {
-    list.innerHTML = '<div class="station-region" style="padding:12px 0;">No saved locations yet &mdash; search a postcode above and tap &#9734; to save it here.</div>';
+    list.innerHTML = '<div class="station-region" style="padding:12px 0;">No saved locations yet - search a postcode above and tap &#9734; to save it here.</div>';
     return;
   }
   list.innerHTML = favs.map(f => '<div class="station-region" style="padding:9px 0;">' + f.label + '&hellip;</div>').join("");

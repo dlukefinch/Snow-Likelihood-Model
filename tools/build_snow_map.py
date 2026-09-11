@@ -659,7 +659,7 @@ function runLocate() {
 
   const outcode = parseOutcode(input.value);
   if (!outcode || !OUTCODES[outcode]) {
-    errorEl.textContent = "Couldn't recognise that postcode — try just the outward part, e.g. \"EH1\" or \"SW1A\".";
+    errorEl.textContent = "Couldn't recognise that postcode - try just the outward part, e.g. \"EH1\" or \"SW1A\".";
     errorEl.classList.add("visible");
     document.getElementById("locate-result").classList.remove("visible");
     locateState = null;
