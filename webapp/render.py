@@ -329,7 +329,7 @@ _PAGE = r"""<!doctype html>
         <button id="btn-live" class="active">Live forecast</button>
         <button id="btn-demo">Example scenario</button>
       </div>
-      <div class="masthead-meta" id="meta-line">generated <strong>-</strong></div>
+      <div class="masthead-meta" id="meta-line">Generated <strong>-</strong></div>
     </div>
   </header>
 
@@ -748,7 +748,7 @@ function renderMap(dataset) {
   fillTable("table-body-mid", mid);
   fillTable("table-body-sea", sea);
 
-  document.getElementById("meta-line").innerHTML = "generated <strong>" + formatDate(dataset.generated) + "</strong>";
+  document.getElementById("meta-line").innerHTML = "Generated <strong>" + formatDate(dataset.generated) + "</strong>";
   document.getElementById("scenario-banner").classList.toggle("visible", dataset === DATA.demo);
 }
 
