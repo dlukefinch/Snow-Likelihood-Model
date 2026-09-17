@@ -520,8 +520,13 @@ function makeMountainSDF() {
   return ctx.getImageData(0, 0, 20, 20);
 }
 
+// Shetland has no reference station of its own, so its coordinates are
+// folded into the extent below to keep it in the default UK view.
+const SHETLAND_BOUNDS = { lat: [59.9, 60.9], lon: [-1.7, -0.7] };
+
 const UK_BOUNDS = (() => {
-  const lats = DATA.live.locations.map(l => l.lat), lons = DATA.live.locations.map(l => l.lon);
+  const lats = [...DATA.live.locations.map(l => l.lat), ...SHETLAND_BOUNDS.lat];
+  const lons = [...DATA.live.locations.map(l => l.lon), ...SHETLAND_BOUNDS.lon];
   return [[Math.min(...lons) - 0.8, Math.min(...lats) - 0.5], [Math.max(...lons) + 0.8, Math.max(...lats) + 0.5]];
 })();
 
@@ -551,7 +556,12 @@ const map = new maplibregl.Map({
   bounds: UK_BOUNDS,
   fitBoundsOptions: { padding: 20 },
   attributionControl: false,
+  cooperativeGestures: true,
 });
+// bounds fitting above runs synchronously (duration: 0), so the zoom it
+// lands on is available immediately -- use it as the zoomed-out limit so
+// visitors can zoom in from the full-UK view but never past it.
+map.setMinZoom(map.getZoom());
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 // MapLibre's compact attribution starts expanded and only collapses to the
