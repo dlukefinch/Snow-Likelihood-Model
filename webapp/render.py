@@ -217,6 +217,10 @@ _PAGE = r"""<!doctype html>
   .maplibregl-popup-tip { border-top-color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
   .mm-name { font-weight: 600; display: block; margin-bottom: 2px; }
   .mm-meta { font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 11px; opacity: 0.8; }
+  .mm-days { display: flex; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.18); }
+  .mm-day { display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
+  .mm-day-label { font-size: 9px; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.7; }
+  .mm-day-pct { font-size: 11px; font-weight: 600; }
 
   /* Muted, theme-matched map attribution -- OpenFreeMap/OSM's terms require
      it stay present and reachable, so it's dimmed rather than removed. */
@@ -458,6 +462,15 @@ function radiusFor(pct) {
   return minR + (maxR - minR) * t;
 }
 
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function formatDayShort(value) {
+  if (!value) return "";
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return value;
+  const [, y, mo, d] = m;
+  return WEEKDAY_NAMES[new Date(Date.UTC(+y, +mo - 1, +d)).getUTCDay()];
+}
+
 function toGeoJSON(dataset) {
   return {
     type: "FeatureCollection",
@@ -468,15 +481,27 @@ function toGeoJSON(dataset) {
         name: loc.name, region: loc.region, elev: loc.elev, elev_class: loc.elev_class,
         peak_pct: loc.peak_pct, peak_category: loc.peak_category, peak_date: loc.peak_date,
         color: catColor(loc.peak_category), radius: radiusFor(loc.peak_pct),
+        days: JSON.stringify(loc.days || []),
       },
     })),
   };
 }
 
 function popupHTML(p) {
+  let daysHTML = "";
+  try {
+    const days = typeof p.days === "string" ? JSON.parse(p.days) : (p.days || []);
+    if (days.length) {
+      daysHTML = '<div class="mm-days">' + days.map(d =>
+        '<div class="mm-day"><span class="mm-day-label">' + formatDayShort(d.date) + '</span>' +
+        '<span class="mm-day-pct" style="color:' + catColor(d.category) + '">' + Math.round(d.peak_pct) + '%</span></div>'
+      ).join("") + '</div>';
+    }
+  } catch { /* no daily breakdown available */ }
   return '<span class="mm-name">' + p.name + '</span>' +
     '<span class="mm-meta">' + p.region + ' &middot; ' + p.elev + 'm</span><br>' +
-    '<span class="mm-meta">peak ' + p.peak_pct.toFixed(1) + '% &middot; ' + p.peak_category + ' &middot; ' + formatDate(p.peak_date) + '</span>';
+    '<span class="mm-meta">peak ' + p.peak_pct.toFixed(1) + '% &middot; ' + p.peak_category + ' &middot; ' + formatDate(p.peak_date) + '</span>' +
+    daysHTML;
 }
 
 // 20x20 SDF diamond, tintable per-feature via icon-color.
