@@ -257,7 +257,7 @@ _PAGE = r"""<!doctype html>
   .shape-swatch { width: 12px; height: 12px; flex: none; background: var(--ink-muted); }
   .shape-swatch.circle { border-radius: 50%; }
   .shape-swatch.mountain { clip-path: polygon(0% 100%, 33% 20%, 46% 55%, 63% 5%, 100% 100%); opacity: 0.7; }
-  .shape-swatch.square { border-radius: 2px; }
+  .shape-swatch.triangle { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
   .shape-swatch.diamond { transform: rotate(45deg); }
   .shape-swatch.star { background: var(--locate-accent); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 
@@ -392,7 +392,7 @@ _PAGE = r"""<!doctype html>
     </div>
     <div class="legend-shapes">
       <div class="shape-item"><span class="shape-swatch mountain"></span>Mountain &amp; summit station (__MOUNTAIN_MIN__&ndash;__MAX_ELEV__m)</div>
-      <div class="shape-item"><span class="shape-swatch square"></span>Mid-elevation &amp; upland (201&ndash;500m)</div>
+      <div class="shape-item"><span class="shape-swatch triangle"></span>Mid-elevation &amp; upland (201&ndash;500m)</div>
       <div class="shape-item"><span class="shape-swatch diamond"></span>Sea level &amp; lowland (&lt; __SEA_LEVEL_MAX__m)</div>
       <div class="shape-item"><span class="shape-swatch star"></span>Your checked location</div>
     </div>
@@ -409,7 +409,7 @@ _PAGE = r"""<!doctype html>
   </div>
 
   <div class="table-section">
-    <h3><span class="shape-swatch square"></span>Mid-elevation &amp; upland (201&ndash;500m)</h3>
+    <h3><span class="shape-swatch triangle"></span>Mid-elevation &amp; upland (201&ndash;500m)</h3>
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr><th>Station</th><th>Region</th><th>Elev.</th><th>Peak day</th><th>Peak %</th><th>Category</th></tr></thead>
@@ -491,13 +491,15 @@ function makeDiamondSDF() {
   return ctx.getImageData(0, 0, 20, 20);
 }
 
-// 20x20 SDF square, tintable per-feature via icon-color.
-function makeSquareSDF() {
+// 20x20 SDF triangle, tintable per-feature via icon-color.
+function makeTriangleSDF() {
   const c = document.createElement("canvas");
   c.width = 20; c.height = 20;
   const ctx = c.getContext("2d");
   ctx.fillStyle = "#fff";
-  ctx.fillRect(2, 2, 16, 16);
+  ctx.beginPath();
+  ctx.moveTo(10, 1); ctx.lineTo(19, 18); ctx.lineTo(1, 18);
+  ctx.closePath(); ctx.fill();
   return ctx.getImageData(0, 0, 20, 20);
 }
 
@@ -761,7 +763,7 @@ map.on("style.load", () => {
   // abort the rest of this handler -- silently dropping every layer after
   // the failure point, including the station icon layers.
   if (!map.hasImage("diamond-sdf")) map.addImage("diamond-sdf", makeDiamondSDF(), { sdf: true });
-  if (!map.hasImage("square-sdf")) map.addImage("square-sdf", makeSquareSDF(), { sdf: true });
+  if (!map.hasImage("triangle-sdf")) map.addImage("triangle-sdf", makeTriangleSDF(), { sdf: true });
   if (!map.hasImage("mountain-sdf")) map.addImage("mountain-sdf", makeMountainSDF(), { sdf: true });
 
   if (!map.getSource("stations")) {
@@ -798,7 +800,7 @@ map.on("style.load", () => {
     map.addLayer({
       id: "stations-mid", type: "symbol", source: "stations",
       filter: ["==", ["get", "elev_class"], "mid"],
-      layout: { "icon-image": "square-sdf", "icon-size": ["/", ["get", "radius"], 8], "icon-allow-overlap": true },
+      layout: { "icon-image": "triangle-sdf", "icon-size": ["/", ["get", "radius"], 8], "icon-allow-overlap": true },
       paint: { "icon-color": ["get", "color"] },
     });
   }
