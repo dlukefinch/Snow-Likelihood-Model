@@ -58,6 +58,7 @@ def build_demo() -> dict:
 
 _PAGE = r"""<!doctype html>
 <title>Snow Watch SLM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -114,6 +115,7 @@ _PAGE = r"""<!doctype html>
     font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased; padding: 40px 20px 64px;
   }
+  @media (max-width: 560px) { body { padding: 24px 16px 48px; } }
   .page { max-width: 980px; margin: 0 auto; }
 
   .eyebrow {
@@ -134,6 +136,12 @@ _PAGE = r"""<!doctype html>
   .subhead a { color: var(--accent); font-size: 13px; }
   .masthead-meta { text-align: right; font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 12px; color: var(--ink-muted); line-height: 1.7; }
   .masthead-meta strong { color: var(--ink-secondary); font-weight: 500; }
+  .masthead-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  @media (max-width: 560px) {
+    .masthead-controls { align-items: stretch; width: 100%; }
+    .masthead-controls .toggle { justify-content: center; }
+    .masthead-meta { text-align: left; }
+  }
 
   .toggle { display: inline-flex; border: 1px solid var(--hairline-strong); border-radius: 999px; padding: 3px; gap: 2px; background: var(--surface); }
   .toggle button {
@@ -166,6 +174,11 @@ _PAGE = r"""<!doctype html>
   }
   .locate-btn:hover { opacity: 0.9; }
   .locate-btn:disabled { opacity: 0.6; cursor: default; }
+  @media (max-width: 560px) {
+    .locate-input, .locate-btn { min-height: 42px; }
+    .locate-row { flex-wrap: nowrap; flex-direction: column; }
+    .locate-btn { width: 100%; min-width: 0; }
+  }
   .locate-error { display: none; color: var(--error); font-size: 12.5px; margin-top: 9px; }
   .locate-error.visible { display: block; }
   .locate-result { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); flex-direction: column; gap: 12px; }
@@ -326,7 +339,7 @@ _PAGE = r"""<!doctype html>
       <p class="subhead">Blended synoptic + ensemble snow-likelihood across thirty-nine UK stations, from mountain summits through mid-elevation uplands to sea level.</p>
       <p class="subhead"><a href="/faq">FAQ &ndash; how to read this map</a></p>
     </div>
-    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+    <div class="masthead-controls">
       <div class="toggle compact" role="group" aria-label="Theme">
         <button id="theme-toggle-light">Light</button>
         <button id="theme-toggle-night">Night</button>
@@ -1032,6 +1045,7 @@ _FAQ_ITEMS = [
 
 _FAQ_PAGE = r"""<!doctype html>
 <title>FAQ &middot; Snow Watch SLM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1067,6 +1081,7 @@ _FAQ_PAGE = r"""<!doctype html>
     font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased; padding: 40px 20px 64px;
   }
+  @media (max-width: 560px) { body { padding: 24px 16px 48px; } }
   .page { max-width: 760px; margin: 0 auto; }
 
   header.masthead {
