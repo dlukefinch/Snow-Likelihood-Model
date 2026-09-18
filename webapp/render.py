@@ -375,7 +375,6 @@ _PAGE = r"""<!doctype html>
         <span class="r-cat-pill" id="r-cat-pill"><span class="chip" id="r-cat-dot"></span><span id="r-cat-text"></span></span>
         <div class="r-detail"><span class="r-detail-label">Peak day</span><span class="r-detail-value" id="r-peak-date"></span></div>
         <div class="r-detail"><span class="r-detail-label">Elevation</span><span class="r-detail-value" id="r-elev"></span></div>
-        <div class="r-detail"><span class="r-detail-label">Coordinates</span><span class="r-detail-value" id="r-coords"></span></div>
         <div class="r-detail" id="r-nearest-row"><span class="r-detail-label">Nearest station</span><span class="r-detail-value" id="r-nearest"></span></div>
       </div>
     </div>
@@ -480,6 +479,18 @@ function radiusFor(pct) {
   const minR = 6, maxR = 17;
   const t = Math.sqrt(Math.max(0, Math.min(100, pct)) / 100);
   return minR + (maxR - minR) * t;
+}
+
+// Full postcodes resolve to an exact point, so showing the postcode back
+// verbatim would reveal it in a screenshot/screen-share -- mask the inward
+// code (the part after the space) with asterisks. Outward-code-only
+// lookups ("EH1") aren't precise enough to identify an address, so those
+// are shown in full.
+function maskPostcode(label, precise) {
+  if (!precise) return label;
+  const parts = label.split(" ");
+  if (parts.length >= 2) return parts.slice(0, -1).join(" ") + " ***";
+  return label.length > 3 ? label.slice(0, -3) + "***" : "***";
 }
 
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -955,7 +966,7 @@ async function runLocate() {
     showYouMarker(body.lon, body.lat, color);
     map.flyTo({ center: [body.lon, body.lat], zoom: Math.max(map.getZoom(), 9), speed: 0.8 });
 
-    document.getElementById("r-station").textContent = body.label + (body.precise ? "" : " (district centre)");
+    document.getElementById("r-station").textContent = maskPostcode(body.label, body.precise) + (body.precise ? "" : " (district centre)");
 
     const pctEl = document.getElementById("r-pct");
     pctEl.textContent = body.peak_pct.toFixed(1) + "%";
@@ -969,7 +980,6 @@ async function runLocate() {
 
     document.getElementById("r-peak-date").textContent = formatDate(body.peak_date);
     document.getElementById("r-elev").textContent = body.elevation_m + "m (model grid)";
-    document.getElementById("r-coords").textContent = body.lat.toFixed(3) + ", " + body.lon.toFixed(3);
 
     const nearestRow = document.getElementById("r-nearest-row");
     if (body.nearest_station) {
@@ -981,8 +991,11 @@ async function runLocate() {
 
     resultEl.classList.add("visible");
 
-    lastLocateResult = { label: body.label, lat: body.lat, lon: body.lon };
+    lastLocateResult = { label: maskPostcode(body.label, body.precise), lat: body.lat, lon: body.lon };
     syncStarButton();
+    // Clear the typed postcode once the search is done so it doesn't sit
+    // visible in the field -- the masked result above is what stays on screen.
+    input.value = "";
   } catch (err) {
     errorEl.textContent = err.message || "Couldn't check that location.";
     errorEl.classList.add("visible");
