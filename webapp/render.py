@@ -212,13 +212,14 @@ _PAGE = r"""<!doctype html>
   @media (max-width: 560px) { .map-card #map { height: 420px; } }
 
   .maplibregl-popup-content {
-    background: var(--ink); color: var(--bg); font-family: "Inter", sans-serif; font-size: 12px;
-    padding: 9px 11px; border-radius: 9px; box-shadow: 0 8px 20px rgba(0,0,0,0.25); line-height: 1.5;
+    background: var(--surface); color: var(--ink); font-family: "Inter", sans-serif; font-size: 12px;
+    padding: 9px 11px; border-radius: 9px; border: 1px solid var(--hairline-strong);
+    box-shadow: var(--shadow); line-height: 1.5;
   }
-  .maplibregl-popup-tip { border-top-color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
+  .maplibregl-popup-tip { border-top-color: var(--surface) !important; border-bottom-color: var(--surface) !important; }
   .mm-name { font-weight: 600; display: block; margin-bottom: 2px; }
-  .mm-meta { font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 11px; opacity: 0.8; }
-  .mm-days { display: flex; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.18); }
+  .mm-meta { font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 11px; color: var(--ink-secondary); }
+  .mm-days { display: flex; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--hairline); }
   .mm-day { display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
   .mm-day-label { font-size: 9px; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.7; }
   .mm-day-pct { font-size: 11px; font-weight: 600; }
