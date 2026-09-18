@@ -38,7 +38,7 @@ from snow_likelihood.mapgeo import haversine_km
 from snow_likelihood.stations import LOCATIONS, SEA_LEVEL_MAX_M, elev_class
 
 from webapp.geocode import GeocodeError, geocode_postcode
-from webapp.render import HTML_TEMPLATE, build_demo
+from webapp.render import HTML_TEMPLATE, build_demo, render_faq
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("snow_outlook")
@@ -127,6 +127,11 @@ async def on_startup():
 def index():
     with _state_lock:
         return _station_state["rendered_html"]
+
+
+@app.get("/faq", response_class=HTMLResponse)
+def faq():
+    return render_faq()
 
 
 def _run_point_lookup(lat: float, lon: float, label: str, precise: bool) -> dict:

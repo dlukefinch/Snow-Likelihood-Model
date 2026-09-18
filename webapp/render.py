@@ -131,6 +131,7 @@ _PAGE = r"""<!doctype html>
     line-height: 1.05; margin: 6px 0 0; text-wrap: balance; letter-spacing: -0.01em;
   }
   .subhead { margin: 10px 0 0; color: var(--ink-secondary); font-size: 15px; max-width: 46ch; }
+  .subhead a { color: var(--accent); font-size: 13px; }
   .masthead-meta { text-align: right; font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 12px; color: var(--ink-muted); line-height: 1.7; }
   .masthead-meta strong { color: var(--ink-secondary); font-weight: 500; }
 
@@ -322,6 +323,7 @@ _PAGE = r"""<!doctype html>
     <div>
       <h1>SLM &middot; Snow Likelihood Model</h1>
       <p class="subhead">Blended synoptic + ensemble snow-likelihood across thirty-nine UK stations, from mountain summits through mid-elevation uplands to sea level.</p>
+      <p class="subhead"><a href="/faq">FAQ &ndash; how to read this map</a></p>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
       <div class="toggle compact" role="group" aria-label="Theme">
@@ -978,6 +980,174 @@ document.getElementById("locate-input").addEventListener("keydown", (e) => {
 });
 </script>
 """
+
+
+_FAQ_ITEMS = [
+    ("Why does a station show a date days from now instead of today?",
+     "Each station's headline number is the <strong>peak day within the forecast "
+     "window</strong> (currently the next 4 days), not necessarily today. If "
+     "conditions are forecast to get colder or wetter later in that window, the "
+     "peak date shown will be a few days out rather than today &ndash; that's the "
+     "model reporting when the best chance of snow actually falls, not an error."),
+    ("What do the percentage and category mean?",
+     "The percentage is a blended likelihood score: a synoptic rules-based score "
+     "(thickness, freezing level, wet-bulb proxy) combined 40/60 with multi-model "
+     "ensemble agreement (UK Met Office, DWD ICON, NOAA GFS, ECMWF). It maps to a "
+     "category &ndash; Very low (&lt;10%), Low (10&ndash;29%), Moderate "
+     "(30&ndash;54%), High (55&ndash;74%), Very high (75%+)."),
+    ("What do the daily figures in a station's popup mean?",
+     "Clicking a station shows its peak summary plus one figure per forecast day, "
+     "so you can see the trend across the window rather than just the single "
+     "best day."),
+    ("What do the different marker shapes mean?",
+     "Shape encodes elevation band: a mountain silhouette for summits, a triangle "
+     "for mid-elevation and upland stations (201&ndash;500m), and a diamond for "
+     "sea level and lowland stations. A pulsing star marks a location you've "
+     "checked by postcode."),
+    ("What's the difference between \"Live forecast\" and \"Example scenario\"?",
+     "Live forecast pulls real, current data from Open-Meteo for every station. "
+     "Example scenario is a fixed demo snapshot (dated 13 January 2026) kept "
+     "around for trying out the interface without waiting on live data."),
+    ("How often is the live data refreshed?",
+     "The station snapshot refreshes automatically in the background roughly "
+     "every 30 minutes."),
+    ("Why can't I see snow risk beyond a few days out?",
+     "Weather forecast skill drops off quickly past a few days, so SLM limits "
+     "itself to a short, more reliable window rather than projecting further "
+     "out with false confidence."),
+    ("How do I zoom or scroll the map?",
+     "Hold Ctrl (or &#8984; on Mac) while scrolling to zoom, or use the +/- "
+     "controls &ndash; this stops an accidental scroll while reading the page "
+     "from hijacking it. The map is also capped so you can zoom in but never "
+     "scroll out past the default UK view."),
+    ("Is this an official warning service?",
+     "No. SLM is an independent hobby forecast, not an official warning "
+     "service &ndash; it is not a substitute for Met Office, SAIS, or mountain "
+     "safety advice."),
+    ("Where does the data come from?",
+     "Weather data from <a href=\"https://open-meteo.com\">Open-Meteo</a>, "
+     "postcode geocoding from <a href=\"https://postcodes.io\">postcodes.io</a>."),
+]
+
+_FAQ_PAGE = r"""<!doctype html>
+<title>FAQ &middot; Snow Watch SLM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f8fafb; --surface: #fdfeff; --ink: #101d28; --ink-secondary: #47616e; --ink-muted: #7f97a2;
+    --hairline: #dae5ea; --hairline-strong: #c2d3da; --accent: #104281; --accent-ink: #ffffff;
+    --shadow: 0 1px 2px rgba(16,29,40,0.04), 0 8px 24px rgba(16,29,40,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+      --bg: #0b141c; --surface: #101b24; --ink: #edf4f7; --ink-secondary: #a7bfca; --ink-muted: #6b8493;
+      --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="night"] {
+    --bg: #0b141c; --surface: #101b24; --ink: #edf4f7; --ink-secondary: #a7bfca; --ink-muted: #6b8493;
+    --hairline: #1f2e38; --hairline-strong: #2a3c48; --accent: #86b6ef; --accent-ink: #08131c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --surface: #0a0a0a; --ink: #f2f5f7; --ink-secondary: #9fb3bd; --ink-muted: #5f7078;
+    --hairline: #161616; --hairline-strong: #262626; --accent: #6fa8e8; --accent-ink: #05090d;
+    --shadow: 0 1px 2px rgba(0,0,0,0.6), 0 12px 28px rgba(0,0,0,0.55);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; padding: 40px 20px 64px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+
+  header.masthead {
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 24px;
+    border-bottom: 1px solid var(--hairline-strong); padding-bottom: 22px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  h1 {
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-weight: 600; font-size: clamp(20px, 2.6vw, 26px);
+    line-height: 1.05; margin: 6px 0 0; letter-spacing: -0.01em;
+  }
+  .subhead { margin: 10px 0 0; color: var(--ink-secondary); font-size: 15px; max-width: 46ch; }
+  .back-link { color: var(--accent); font-size: 13px; text-decoration: none; }
+  .back-link:hover { text-decoration: underline; }
+
+  .toggle { display: inline-flex; border: 1px solid var(--hairline-strong); border-radius: 999px; padding: 3px; gap: 2px; background: var(--surface); }
+  .toggle button {
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 12px; letter-spacing: 0.04em;
+    border: none; background: transparent; color: var(--ink-secondary); padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .toggle button.active { background: var(--accent); color: var(--accent-ink); }
+  .toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .faq-item {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 12px;
+  }
+  .faq-q { font-weight: 600; font-size: 14.5px; margin: 0 0 6px; }
+  .faq-a { font-size: 13.5px; color: var(--ink-secondary); line-height: 1.6; margin: 0; }
+  .faq-a a { color: var(--accent); }
+
+  footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--hairline); color: var(--ink-muted); font-size: 12px; line-height: 1.7; }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div>
+      <h1>FAQ</h1>
+      <p class="subhead">How to read the Snow Likelihood Model map and numbers.</p>
+      <p class="subhead"><a class="back-link" href="/">&larr; Back to the map</a></p>
+    </div>
+    <div class="toggle" role="group" aria-label="Theme">
+      <button id="theme-toggle-light">Light</button>
+      <button id="theme-toggle-night">Night</button>
+      <button id="theme-toggle-dark">Dark</button>
+    </div>
+  </header>
+
+  __FAQ_ITEMS__
+
+  <footer>
+    Still have a question that's not answered here? The map itself has a <strong>Method</strong> note in its
+    own footer with more detail on how the score is calculated.
+  </footer>
+</div>
+
+<script>
+const THEME_KEY = "snowOutlookTheme";
+const THEMES = ["light", "night", "dark"];
+function getStoredTheme() { try { return localStorage.getItem(THEME_KEY); } catch { return null; } }
+function setStoredTheme(theme) { try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ } }
+let currentTheme = getStoredTheme() || "dark";
+document.documentElement.dataset.theme = currentTheme;
+function syncThemeButtons() {
+  THEMES.forEach(t => document.getElementById("theme-toggle-" + t).classList.toggle("active", t === currentTheme));
+}
+syncThemeButtons();
+THEMES.forEach(t => document.getElementById("theme-toggle-" + t).addEventListener("click", () => {
+  currentTheme = t;
+  document.documentElement.dataset.theme = t;
+  syncThemeButtons();
+  setStoredTheme(t);
+}));
+</script>
+"""
+
+
+def render_faq() -> str:
+    items_html = "\n".join(
+        '  <div class="faq-item"><p class="faq-q">' + q + '</p><p class="faq-a">' + a + '</p></div>'
+        for q, a in _FAQ_ITEMS
+    )
+    return _FAQ_PAGE.replace("__FAQ_ITEMS__", items_html)
 
 
 def HTML_TEMPLATE(live: dict, demo: dict) -> str:
