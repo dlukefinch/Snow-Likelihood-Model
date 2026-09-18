@@ -139,7 +139,8 @@ _PAGE = r"""<!doctype html>
   .masthead-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   @media (max-width: 560px) {
     .masthead-controls { align-items: stretch; width: 100%; }
-    .masthead-controls .toggle { justify-content: center; }
+    .masthead-controls .toggle { width: 100%; }
+    .masthead-controls .toggle button { flex: 1; text-align: center; }
     .masthead-meta { text-align: left; }
   }
 
@@ -175,9 +176,12 @@ _PAGE = r"""<!doctype html>
   .locate-btn:hover { opacity: 0.9; }
   .locate-btn:disabled { opacity: 0.6; cursor: default; }
   @media (max-width: 560px) {
-    .locate-input, .locate-btn { min-height: 42px; }
+    /* font-size 16px stops iOS Safari auto-zooming the page on focus */
     .locate-row { flex-wrap: nowrap; flex-direction: column; }
-    .locate-btn { width: 100%; min-width: 0; }
+    /* flex-basis applies to height once the row above is a column, so pin
+       the input to auto/content height instead of inheriting 200px+grow */
+    .locate-input { flex: 0 0 auto; width: 100%; font-size: 16px; padding: 10px 12px; }
+    .locate-btn { flex: 0 0 auto; width: 100%; min-width: 0; min-height: 42px; }
   }
   .locate-error { display: none; color: var(--error); font-size: 12.5px; margin-top: 9px; }
   .locate-error.visible { display: block; }
@@ -1103,6 +1107,10 @@ _FAQ_PAGE = r"""<!doctype html>
   }
   .toggle button.active { background: var(--accent); color: var(--accent-ink); }
   .toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 560px) {
+    .toggle { width: 100%; }
+    .toggle button { flex: 1; text-align: center; }
+  }
 
   .faq-item {
     background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
