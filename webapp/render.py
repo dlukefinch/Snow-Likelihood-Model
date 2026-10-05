@@ -130,10 +130,12 @@ _HEAD = r"""<meta charset="utf-8">
 
   .navbar-slm { background: var(--surface); border-bottom: 1px solid var(--hairline); }
   .navbar-slm .navbar-brand { color: var(--ink); font-weight: 600; font-size: 1rem; }
-  .brand-mark {
-    width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
-    background: var(--accent); color: var(--accent-ink); font-size: 16px;
-  }
+  /* SnowWatch wordmark: white artwork on Night/Dark, black on Light. */
+  .brand-logo { height: 26px; width: auto; display: block; }
+  .brand-logo.on-light { display: none; }
+  :root[data-theme="light"] .brand-logo.on-light { display: block; }
+  :root[data-theme="light"] .brand-logo.on-dark { display: none; }
+  .brand-name { padding-left: 12px; border-left: 1px solid var(--hairline-strong); }
 
   .eyebrow {
     font-size: 11px; letter-spacing: 0.1em; font-weight: 600; text-transform: uppercase;
@@ -185,9 +187,10 @@ _HEAD = r"""<meta charset="utf-8">
 
 _NAVBAR = r"""<nav class="navbar navbar-slm sticky-top">
   <div class="container-xl">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-      <span class="brand-mark"><i class="bi bi-snow2"></i></span>
-      <span>SLM <span class="d-none d-sm-inline fw-normal text-body-secondary">&middot; Snow Likelihood Model</span></span>
+    <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+      <img class="brand-logo on-dark" src="/static/snowwatch-logo-white.png" alt="SnowWatch">
+      <img class="brand-logo on-light" src="/static/snowwatch-logo-black.png" alt="SnowWatch">
+      <span class="brand-name d-none d-sm-inline fw-normal text-body-secondary">Snow Likelihood Model</span>
     </a>
     <div class="d-flex align-items-center gap-2">
       <a class="btn btn-sm btn-seg __FAQ_ACTIVE__" href="/faq"><i class="bi bi-question-circle"></i><span class="d-none d-sm-inline ms-1">FAQ</span></a>

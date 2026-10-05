@@ -28,6 +28,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -44,6 +45,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("snow_outlook")
 
 app = FastAPI(title="UK Snow Outlook")
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 STATION_REFRESH_INTERVAL_S = 30 * 60  # keep the 12-station snapshot this fresh
 POSTCODE_CACHE_TTL_S = 30 * 60
