@@ -193,6 +193,7 @@ _NAVBAR = r"""<nav class="navbar navbar-slm sticky-top">
       <span class="brand-name d-none d-sm-inline fw-normal text-body-secondary">Snow Likelihood Model</span>
     </a>
     <div class="d-flex align-items-center gap-2">
+      <a class="btn btn-sm btn-seg" href="https://snowwatch.org/" title="Back to Snow Watch" aria-label="Back to Snow Watch"><i class="bi bi-arrow-left"></i><span class="d-none d-md-inline ms-1">Back to Snow Watch</span></a>
       <a class="btn btn-sm btn-seg __FAQ_ACTIVE__" href="/faq"><i class="bi bi-question-circle"></i><span class="d-none d-sm-inline ms-1">FAQ</span></a>
       <div class="dropdown">
         <button class="btn btn-sm btn-seg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Theme">
