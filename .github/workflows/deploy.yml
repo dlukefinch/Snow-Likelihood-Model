@@ -1,0 +1,71 @@
+# Deploys the web app to the VPS on every push to main (or on demand from
+# the Actions tab): copies the repo over SSH, installs requirements into the
+# server's venv, restarts the systemd service, then waits for the live site
+# to answer.
+#
+# Repository secrets:   DEPLOY_SSH_KEY      private key the server accepts
+#                       DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <host>`
+# Repository variables: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH (project root
+#                       on the server), DEPLOY_SERVICE (systemd unit name),
+#                       DEPLOY_URL (public site URL)
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ vars.DEPLOY_HOST }}
+      USER_NAME: ${{ vars.DEPLOY_USER }}
+      DEST: ${{ vars.DEPLOY_PATH }}
+      SERVICE: ${{ vars.DEPLOY_SERVICE }}
+      URL: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # No --delete: files that only exist on the server (its .venv, local
+      # config, output) are left alone.
+      - name: Upload code
+        run: |
+          rsync -az \
+            --exclude .git --exclude .github --exclude .venv --exclude .nova \
+            --exclude .claude --exclude tests --exclude snow_likelihood.zip \
+            --exclude __pycache__ --exclude tools/output \
+            ./ "$USER_NAME@$HOST:$DEST/"
+
+      - name: Install requirements and restart
+        run: |
+          ssh "$USER_NAME@$HOST" "set -e
+            cd '$DEST'
+            .venv/bin/pip install -q -r requirements.txt
+            if [ \"\$(id -u)\" -eq 0 ]; then systemctl restart '$SERVICE'; else sudo systemctl restart '$SERVICE'; fi"
+
+      # The app refreshes every station from Open-Meteo before it starts
+      # serving, so give it a few minutes to come back up.
+      - name: Wait for the site
+        run: |
+          for i in $(seq 1 36); do
+            if curl -fsS -o /dev/null --max-time 10 "$URL"; then echo "Site is up"; exit 0; fi
+            sleep 5
+          done
+          echo "Site didn't respond within 3 minutes" >&2
+          exit 1
