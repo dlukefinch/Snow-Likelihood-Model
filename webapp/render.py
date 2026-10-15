@@ -81,12 +81,9 @@ _HEAD = r"""<meta charset="utf-8">
   /* Apple-style system palette (iOS grouped backgrounds, system blue).
      Three themes: Light, Night (graphite, iOS "elevated" dark), Dark (true
      black, the default). data-theme picks the palette; data-bs-theme puts
-     Bootstrap in its light/dark mode to match. Inter is only a fallback for
-     platforms without San Francisco. */
+     Bootstrap in its light/dark mode to match. Inter everywhere. */
   :root {
-    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
-    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-    --font-rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --radius: 18px; --radius-sm: 12px;
     --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 
@@ -229,15 +226,15 @@ _HEAD = r"""<meta charset="utf-8">
 
   /* Context menu, like a SwiftUI Menu. */
   .dropdown-menu {
-    --bs-dropdown-bg: var(--material); --bs-dropdown-border-color: var(--hairline);
-    --bs-dropdown-border-radius: 14px; --bs-dropdown-padding-y: 6px; --bs-dropdown-min-width: 11rem;
+    --bs-dropdown-bg: var(--surface); --bs-dropdown-border-color: var(--hairline);
+    --bs-dropdown-border-radius: 14px; --bs-dropdown-padding-y: 6px; --bs-dropdown-min-width: 9.5rem;
     --bs-dropdown-link-color: var(--ink); --bs-dropdown-link-hover-color: var(--ink); --bs-dropdown-link-hover-bg: var(--fill);
     --bs-dropdown-link-active-color: var(--ink); --bs-dropdown-link-active-bg: transparent;
     --bs-dropdown-item-padding-y: 8px; --bs-dropdown-font-size: 15px;
-    -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px);
     box-shadow: var(--shadow-float);
   }
-  .dropdown-item { display: flex; align-items: center; gap: 10px; border-radius: 8px; margin: 0 6px; width: auto; }
+  /* Items are <button>s, which shrink to their content unless given a width. */
+  .dropdown-item { display: flex; align-items: center; gap: 10px; border-radius: 8px; margin: 0 6px; width: calc(100% - 12px); padding-right: 10px; }
   .dropdown-item i { width: 18px; text-align: center; color: var(--ink-secondary); }
   .dropdown-item .check { margin-left: auto; color: var(--accent); visibility: hidden; }
   .dropdown-item.active .check { visibility: visible; }
@@ -341,7 +338,7 @@ __HEAD__
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <style>
   .large-title {
-    font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12;
+    font-family: var(--font); font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12;
   }
   @media (min-width: 768px) { .large-title { font-size: 44px; } }
   .hero-sub { color: var(--ink-secondary); font-size: 17px; line-height: 1.47; max-width: 54ch; letter-spacing: -0.022em; }
@@ -374,7 +371,7 @@ __HEAD__
   .locate-result.visible { display: block; animation: rise 300ms var(--ease); }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .r-pct {
-    font-family: var(--font-rounded); font-variant-numeric: tabular-nums;
+    font-family: var(--font); font-variant-numeric: tabular-nums;
     font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
   }
   .cat-badge {
@@ -418,7 +415,7 @@ __HEAD__
   .station-list .list-group-item-action:hover { opacity: 0.7; }
   .station-name { font-size: 15px; font-weight: 500; }
   .station-region { font-size: 13px; color: var(--ink-secondary); }
-  .station-pct { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; flex: none; }
+  .station-pct { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; flex: none; }
   .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 
   .map-card { overflow: hidden; }
@@ -448,7 +445,7 @@ __HEAD__
   .mm-days { display: flex; gap: 14px; margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--hairline-strong); }
   .mm-day { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .mm-day-label { font-size: 11px; color: var(--ink-secondary); }
-  .mm-day-pct { font-family: var(--font-rounded); font-size: 14px; font-weight: 600; }
+  .mm-day-pct { font-family: var(--font); font-size: 14px; font-weight: 600; }
 
   /* Muted, theme-matched map attribution -- OpenFreeMap/OSM's terms require
      it stay present and reachable, so it's dimmed rather than removed. */
@@ -1276,7 +1273,7 @@ _FAQ_PAGE = r"""<!doctype html>
 <title>FAQ &middot; Snow Watch SLM</title>
 __HEAD__
 <style>
-  .large-title { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; }
+  .large-title { font-family: var(--font); font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; }
   .faq-sub { color: var(--ink-secondary); font-size: 17px; letter-spacing: -0.022em; }
   /* Inset grouped list with disclosure rows. */
   .accordion {
